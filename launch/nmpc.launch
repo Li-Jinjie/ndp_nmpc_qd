@@ -1,0 +1,10 @@
+<launch>
+<!--    pure nmpc controller-->
+    <arg name="qd_name" default="qd_0" />
+
+    <node pkg="oop_qd_onbd" type="controller_node.py" name="nmpc" output="screen">
+        <param name="qd_name" value="$(arg qd_name)"/>
+    </node>
+
+
+</launch>

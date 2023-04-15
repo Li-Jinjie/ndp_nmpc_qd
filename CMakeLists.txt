@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   std_msgs
   message_generation
+  actionlib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -57,17 +58,16 @@ add_message_files(
  )
 
 ## Generate services in the 'srv' folder
- add_service_files(
-   FILES
-   TrackTraj.srv
- )
+# add_service_files(
+#   FILES
+#   SetTraj.sr
+# )
 
 ## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
+add_action_files(
+  FILES
+  TrackTraj.action
+)
 
 ## Generate added messages and services with any dependencies listed here
  generate_messages(
@@ -162,12 +162,12 @@ include_directories(
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
-## Mark executable scripts (Python etc.) for installation
+## Mark executable scripts  etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# catkin_install_python(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+catkin_install_python(PROGRAMS
+  scripts/controller_node.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html

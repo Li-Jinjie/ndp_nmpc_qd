@@ -1,0 +1,9 @@
+#goal definition
+oop_qd_onbd/TrajCoefficients traj_coeff
+---
+#result definition
+float64 tracking_error_rmse
+---
+#feedback
+float64 percent_complete
+geometry_msgs/Point tracking_error   # target position - now position
