@@ -55,6 +55,7 @@ add_message_files(
   TrajCoefficients.msg
   TrajFullStatePt.msg
   MultiTrajFullStatePt.msg
+  TrajPt.msg
  )
 
 ## Generate services in the 'srv' folder
