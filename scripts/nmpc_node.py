@@ -147,13 +147,12 @@ class ControllerNode:
         """
         nmpc_x0, _ = self.odom_2_nmpc_x_u(self.px4_odom)
         u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref)
-        att_tgt = self.nmpc_u_2_att_tgt(u0[0], u0[1], u0[2], u0[3])
-        self.pub_attitude.publish(att_tgt)
+        self.body_rate_cmd = self.nmpc_u_2_att_tgt(u0[0], u0[1], u0[2], u0[3])
+        self.pub_attitude.publish(self.body_rate_cmd)
 
     def hover_throttle_callback(self, timer: rospy.timer.TimerEvent):
         vz = self.px4_odom.twist.twist.linear.z
         self.k_throttle, _, _ = self.hv_th_estimator.update(vz, self.body_rate_cmd.thrust)
-        # print(f"vz: {vz}, k_throttle: {self.k_throttle}")
 
     def sub_state_callback(self, msg: State):
         self.px4_state = msg
