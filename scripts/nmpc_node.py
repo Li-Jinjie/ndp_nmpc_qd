@@ -2,7 +2,7 @@
 # -*- encoding: ascii -*-
 """
 Author: LI Jinjie
-File: controller_node.py
+File: nmpc_node.py
 Date: 2023/4/15 10:33 AM
 Description:
 """
@@ -23,8 +23,9 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, PoseArray
 from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback
 
+from pt_pub import NMPCRefPublisher
 from nmpc import NMPCBodyRateController
-from estimator import HoverThrottleEstimator
+from hv_throttle_est import HoverThrottleEstimator
 
 from params import nmpc_params as CP, estimator_params as EP  # TODO: where is this CP should be?
 
@@ -36,15 +37,14 @@ class ControllerNode:
         rospy.init_node("tracking_controller", anonymous=False)
         qd_name = rospy.get_param(rospy.get_name() + "/qd_name")
 
-        # # NMPC
-        # self.nmpc_opt = NMPCBodyRateController()
-
         # Action -> reference
         self.tracking_server = actionlib.SimpleActionServer(
             "tracking_controller/track_traj", TrackTrajAction, self.track_traj_callback, auto_start=False
         )
         self.tracking_server.start()
         rospy.loginfo("Action Server started: tracking_controller/track_traj")
+
+        self.ref_pub = NMPCRefPublisher()
 
         # Sub  -> feedback
         self.px4_state = State()
@@ -59,7 +59,11 @@ class ControllerNode:
 
         # Timer
         # - Controller
-        # self.tmr_control = rospy.Timer(rospy.Duration(0.1), self.control_callback)
+        self.nmpc_ctl = NMPCBodyRateController()
+        self.nmpc_x_ref = np.zeros([CP.N_node + 1, CP.n_states])
+        self.nmpc_u_ref = np.zeros([CP.N_node, CP.n_controls])
+        self.tmr_control = rospy.Timer(rospy.Duration(CP.ts_nmpc), self.nmpc_callback)
+
         # - Estimator
         self.k_throttle = EP.k_throttle_init
         self.hv_th_estimator = HoverThrottleEstimator(EP.ts_est)
@@ -71,13 +75,24 @@ class ControllerNode:
         self.pub_viz_pred = rospy.Publisher("tracking_controller/viz_pred", PoseArray, queue_size=10)
 
     def track_traj_callback(self, goal: TrackTrajGoal):
-        rospy.loginfo("Receive a trajectory. Start tracking trajectory.")
+        """handle 3 task:
+        1. receive a trajectory
+        2. pub the trajectory reference points to the controller. give back the tracking error
+        3. stop and restart the hover throttle estimation
+
+        :param goal:
+        :return:
+        """
+        rospy.loginfo("Receive a trajectory. Start tracking trajectory...")
 
         self.tmr_hv_throttle_est.shutdown()  # stop hover throttle estimation
 
-        # TODO: tracking trajectory
-        for i in range(10):
-            time.sleep(0.5)
+        self.ref_pub.reset(goal.traj_coeff, rospy.Time.now())
+
+        while self.ref_pub.is_activated:
+            # get reference. note that the pt_pub is asynchronous with controller, that is to say,
+            # pt_pub doesn't wait for the controller to finish the previous step before publishing the next reference.
+            self.nmpc_x_ref, self.nmpc_u_ref = self.ref_pub.get_nmpc_pts(rospy.Time.now())
 
             # check for preempt
             if self.tracking_server.is_preempt_requested():
@@ -87,17 +102,20 @@ class ControllerNode:
 
             # publish feedback
             feedback = TrackTrajFeedback()
-            feedback.percent_complete = i / 10
-            feedback.tracking_error = Point(0.1 * i, 0.2 * i, 0.3 * i)
+            feedback.percent_complete = self.ref_pub.t_now / self.ref_pub.t_all
+            # feedback.tracking_error = Point(0.1 * i, 0.2 * i, 0.3 * i)  # TODO
             rospy.loginfo(f"percent_complete: {feedback.percent_complete}")
             self.tracking_server.publish_feedback(feedback)
 
         rospy.loginfo("Trajectory tracking finished.")
-        error_rmse = 1379  # the listener number on three-body plant
+        error_rmse = 1379  # the listener number on three-body plant  # TODO
 
         self.tmr_hv_throttle_est.start()  # restart hover throttle estimation
 
         self.tracking_server.set_succeeded(TrackTrajResult(error_rmse))
+
+    def nmpc_callback(self, timer: rospy.timer.TimerEvent):
+        pass
 
     def hover_throttle_callback(self, timer: rospy.timer.TimerEvent):
         vz = self.px4_odom.twist.twist.linear.z
