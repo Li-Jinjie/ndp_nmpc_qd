@@ -89,30 +89,44 @@ class ControllerNode:
 
         self.ref_pub.reset(goal.traj_coeff, rospy.Time.now())
 
+        pos_rmse = 0
+        yaw_rmse = 0
+
         while self.ref_pub.is_activated:
-            # get reference. note that the pt_pub is asynchronous with controller, that is to say,
+            # get reference
+            # note that the pt_pub is asynchronous with controller, that is to say,
             # pt_pub doesn't wait for the controller to finish the previous step before publishing the next reference.
             self.nmpc_x_ref, self.nmpc_u_ref = self.ref_pub.get_nmpc_pts(rospy.Time.now())
 
-            # check for preempt
+            # check for preempt. Action related
             if self.tracking_server.is_preempt_requested():
                 rospy.loginfo("Trajectory tracking preempted.")
                 self.tracking_server.set_preempted()
                 return  # exit the callback and step into the next callback to handle new goal
 
+            # get error
+            pos_err_now, yaw_err_now, pos_rmse, yaw_rmse = self.ref_pub.cum_error(self.px4_odom)
+
             # publish feedback
             feedback = TrackTrajFeedback()
             feedback.percent_complete = self.ref_pub.t_now / self.ref_pub.t_all
-            # feedback.tracking_error = Point(0.1 * i, 0.2 * i, 0.3 * i)  # TODO
+            feedback.pos_error = pos_err_now
+            feedback.yaw_error = yaw_err_now
             rospy.loginfo(f"percent_complete: {feedback.percent_complete}")
             self.tracking_server.publish_feedback(feedback)
 
         rospy.loginfo("Trajectory tracking finished.")
-        error_rmse = 1379  # the listener number on three-body plant  # TODO
+
+        print(
+            f"\n================================================\n"
+            f"Positional error (RMSE): {pos_rmse:.6f} [m]\n"
+            f"heading error (RMSE): {yaw_rmse:.6f} [deg]\n"
+            f"================================================\n"
+        )
 
         self.tmr_hv_throttle_est.start()  # restart hover throttle estimation
 
-        self.tracking_server.set_succeeded(TrackTrajResult(error_rmse))
+        self.tracking_server.set_succeeded(TrackTrajResult(pos_rmse, yaw_rmse))
 
     def nmpc_callback(self, timer: rospy.timer.TimerEvent):
         pass

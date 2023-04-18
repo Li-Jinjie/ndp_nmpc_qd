@@ -37,7 +37,9 @@ class NMPCRefPublisher(FullStatePtPublisher):
         ur = np.zeros([CP.N_node, CP.n_controls])
 
         for i in range(CP.N_node + 1):
-            traj_full_pt: TrajFullStatePt = self.get_full_state_pt(ros_t, is_pred=True)
+
+            is_pred = False if i == 0 else True  # the first state may change is_activate flag, the others are not.
+            traj_full_pt: TrajFullStatePt = self.get_full_state_pt(ros_t, is_pred=is_pred)
             xr[i, :] = np.array(
                 [
                     traj_full_pt.pose.position.x,

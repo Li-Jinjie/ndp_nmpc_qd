@@ -10,7 +10,10 @@ Description: trajectory generator, using closed-form Minimum Snap method.
 """
 import numpy as np
 import rospy
+import tf_conversions
 
+from geometry_msgs.msg import Point
+from nav_msgs.msg import Odometry
 from oop_qd_onbd.msg import TrajCoefficients, TrajPt  # TODO: change ROS msg to python msg
 from .polym_optimizer import PolymOptimizer, MinMethod
 
@@ -24,43 +27,56 @@ class BasePtPublisher:
 
         self.traj_coeff = TrajCoefficients()
 
-        # state
+        # states need reset
         self.tracking_pos_err = 0.0  # m
         self.tracking_yaw_err = 0.0  # deg
         self.tracking_pt_num = 0.0
         self.start_ros_t = rospy.Time.now()  # store start time in rospy.Time
         self.is_activated = False  # if finish the whole trajectory, False.
-
-        # traj attributes
         self.t_all = 0.0
+
+        # states now
         self.t_now = 0.0
+        self.traj_pt_now = TrajPt()
 
     def reset(self, traj_coeff: TrajCoefficients, ros_t: rospy.Time) -> None:
         self.traj_coeff = traj_coeff
 
-        self.tracking_pos_err = 0  # m
-        self.tracking_yaw_err = 0  # deg
-        self.tracking_pt_num = 0
+        self.tracking_pos_err = 0.0  # m
+        self.tracking_yaw_err = 0.0  # deg
+        self.tracking_pt_num = 0.0
         self.start_ros_t = ros_t
         self.is_activated = True
-
         self.t_all = traj_coeff.traj_time_cum[-1]
 
-    def cum_error(self, pos_err: float, yaw_err: float) -> None:
+    def cum_error(self, odom_now: Odometry) -> (float, float, float, float):
         """cumulate RMSE error. print the final result after the traj is finished."""
+
+        # calculate error. error = target - now
+        traj_pt = self.traj_pt_now
+        pos_now = odom_now.pose.pose.position
+
+        pos_err = (
+            (traj_pt.position.x - pos_now.x) ** 2
+            + (traj_pt.position.y - pos_now.y) ** 2
+            + (traj_pt.position.z - pos_now.z) ** 2
+        )
+
+        q = odom_now.pose.pose.orientation
+        euler = tf_conversions.transformations.euler_from_quaternion([q.x, q.y, q.z, q.w])
+        yaw_now = euler[2]
+        yaw_err = (np.degrees(traj_pt.yaw) - np.degrees(yaw_now)) ** 2
+
         self.tracking_pos_err += pos_err
         self.tracking_yaw_err += yaw_err
         self.tracking_pt_num += 1
 
-        if self.is_activated is False:
-            tracking_pos_err = np.sqrt(self.tracking_pos_err / self.tracking_pt_num)
-            tracking_yaw_err = np.sqrt(self.tracking_yaw_err / self.tracking_pt_num)
-            print(
-                f"\n================================================\n"
-                f"Positional error (RMSE): {tracking_pos_err:.6f} [m]\n"
-                f"heading error (RMSE): {tracking_yaw_err:.6f} [deg]\n"
-                f"================================================\n"
-            )
+        return (
+            pos_err,
+            yaw_err,
+            np.sqrt(self.tracking_pos_err / self.tracking_pt_num),  # rmse for pos
+            np.sqrt(self.tracking_yaw_err / self.tracking_pt_num),  # rmse for yaw
+        )
 
     def get_pt(self, ros_t: rospy.Time, is_pred: bool = False) -> TrajPt:
         """
@@ -72,14 +88,15 @@ class BasePtPublisher:
         traj_pt = TrajPt()
 
         t = (ros_t - self.start_ros_t).to_sec()
-        self.t_now = t
 
+        # Finish Detection
         if t >= self.traj_coeff.traj_time_cum[-1]:  # change to "hover" after finished
             traj_pt.position = self.traj_coeff.final_pt
-            if is_pred is False:
+            if not is_pred:
                 self.is_activated = False
             return traj_pt
 
+        # Generate Pt
         time_cum = np.array(self.traj_coeff.traj_time_cum)
         time_seg = np.array(self.traj_coeff.traj_time_seg)
         t_index = np.argwhere(time_cum > t)[0].item() - 1  # t_index ? S_i
@@ -87,7 +104,7 @@ class BasePtPublisher:
         t_segment = time_seg[t_index]
         t_scaled = (t - time_cum[t_index]) / t_segment
 
-        # x,y,z
+        # - x,y,z
         c_x = _get_specific_coeff(t_index, self.optr_x, np.array(self.traj_coeff.coeff_x))
         c_y = _get_specific_coeff(t_index, self.optr_y, np.array(self.traj_coeff.coeff_y))
         c_z = _get_specific_coeff(t_index, self.optr_z, np.array(self.traj_coeff.coeff_z))
@@ -108,10 +125,15 @@ class BasePtPublisher:
         traj_pt.jerk.y = _get_output_value(self.optr_y, 3, t_scaled, t_segment, c_y)
         traj_pt.jerk.z = _get_output_value(self.optr_z, 3, t_scaled, t_segment, c_z)
 
-        # yaw
+        # - yaw
         c_yaw = _get_specific_coeff(t_index, self.optr_yaw, np.array(self.traj_coeff.coeff_yaw))
         traj_pt.yaw = _get_output_value(self.optr_yaw, 0, t_scaled, t_segment, c_yaw)
         traj_pt.yaw_dot = _get_output_value(self.optr_yaw, 1, t_scaled, t_segment, c_yaw)
+
+        # Update States Now
+        if not is_pred:
+            self.t_now = t
+            self.traj_pt_now = traj_pt
 
         return traj_pt
 
