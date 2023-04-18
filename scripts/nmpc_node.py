@@ -16,12 +16,13 @@ sys.path.insert(0, current_path)
 import time
 import numpy as np
 import rospy
+import tf2_ros
 import actionlib
 from typing import List, Tuple
 
 from mavros_msgs.msg import AttitudeTarget, State
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Point, PoseArray
+from geometry_msgs.msg import PoseArray, TransformStamped
 from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback
 
 from pt_pub import NMPCRefPublisher
@@ -30,13 +31,12 @@ from hv_throttle_est import HoverThrottleEstimator
 
 from params import nmpc_params as CP, estimator_params as EP  # TODO: where is this CP should be?
 
-# TODO: 1. estimation, 2. tf2_relay, 3. controller
-
 
 class ControllerNode:
     def __init__(self) -> None:
         rospy.init_node("tracking_controller", anonymous=False)
         qd_name = rospy.get_param(rospy.get_name() + "/qd_name")
+        self.qd_name = qd_name
 
         # Action -> reference
         self.pt_pub_server = actionlib.SimpleActionServer(
@@ -159,6 +159,18 @@ class ControllerNode:
 
     def sub_odom_callback(self, msg: Odometry):
         self.px4_odom = msg
+
+        # tf2 pub
+        br = tf2_ros.TransformBroadcaster()
+        t = TransformStamped()
+
+        t.header.stamp = rospy.Time.now()
+        t.header.frame_id = "map"
+        t.child_frame_id = self.qd_name
+        t.transform.translation = msg.pose.pose.position
+        t.transform.rotation = msg.pose.pose.orientation
+
+        br.sendTransform(t)
 
     def odom_2_nmpc_x_u(self, odom: Odometry, is_hover_u: bool = True) -> Tuple[np.ndarray, np.ndarray]:
         x = np.array(
