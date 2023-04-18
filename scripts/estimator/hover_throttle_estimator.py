@@ -9,33 +9,36 @@ Description:
 
 import numpy as np
 from .differentiator import Differentiator
+from ..params import estimator_params as EP
 
 
 class HoverThrottleEstimator:
-    def __init__(self, ts: float, mass: float, k_thrust_init: float) -> None:
+    def __init__(self, ts: float) -> None:
         # differentiator to get a_z
         self.vz_diff = Differentiator(ts)
 
         # init guess
-        self.x = np.array([[0], [k_thrust_init]])  # [[T], [k_param]]
-
-        # matrices
+        self.x = np.array([[0], [EP.k_throttle_init]])  # [[f_collect], [k_throttle]]
         self.P_mtx = np.eye(2)
+
         self.K = None
 
+        # define model
         self.Phi_mtx = np.zeros([2, 2])
         self.Phi_mtx[1, 1] = 1
         self.G = 0
         self.Gamma_mtx = np.eye(2)
-        self.H_mtx = np.array([[1 / mass, 0]])
+        self.H_mtx = np.array([[1 / EP.mass, 0]])
 
         # parameters
-        self.R = 1.225  # 0.1225 (m/s^2)^2  come from EKF2_ACC_NOISE
-        self.Q = np.diag([0.1, 0.1])
+        self.R = EP.R
+        self.Q = EP.Q
 
-    def update(self, acc_sp_z: float, throttle: float) -> tuple:
+    def update(self, vz: float, throttle: float) -> tuple:
+        az = self.vz_diff.update(vz)
+
         if 0.1 < throttle < 1:
-            z = acc_sp_z
+            z = az + EP.gravity
             self.Phi_mtx[0, 1] = throttle
 
             # Kalman Filter
@@ -45,6 +48,6 @@ class HoverThrottleEstimator:
             self.x = self.x + self.K @ (z - self.H_mtx @ self.x)
             self.P_mtx = (np.eye(2) - self.K @ self.H_mtx) @ self.P_mtx
 
-        k_param = self.x.item(1)
+        k_throttle = self.x.item(1)
 
-        return k_param, self.x, self.P_mtx
+        return k_throttle, self.x, self.P_mtx
