@@ -40,20 +40,22 @@ class ControllerNode:
 
         # Action -> reference
         self.pt_pub_server = actionlib.SimpleActionServer(
-            "tracking_controller/pt_pub_action_server", TrackTrajAction, self.pt_pub_callback, auto_start=False
+            f"/{qd_name}/tracking_controller/pt_pub_action_server",
+            TrackTrajAction,
+            self.pt_pub_callback,
+            auto_start=False,
         )
-        self.pt_pub_server.start()
-        rospy.loginfo("Action Server started: tracking_controller/pt_pub_action_server")
 
         self.ref_pub = NMPCRefPublisher()
 
         # Sub  -> feedback
         self.px4_state = State()
         self.px4_odom = None
-        rospy.Subscriber("mavros/state", State, callback=self.sub_state_callback)
-        rospy.Subscriber("mavros/local_position/odom", Odometry, self.sub_odom_callback)
+        rospy.Subscriber(f"/{qd_name}/mavros/state", State, callback=self.sub_state_callback)
+        rospy.Subscriber(f"/{qd_name}/mavros/local_position/odom", Odometry, self.sub_odom_callback)
 
         # Wait for Flight Controller connection
+        rospy.loginfo("Waiting for the Flight Controller (eg. PX4) connection...")
         while not rospy.is_shutdown() and not self.px4_state.connected:
             time.sleep(0.5)
         rospy.loginfo("Flight Controller connected!")
@@ -67,6 +69,7 @@ class ControllerNode:
             if self.px4_odom is not None:
                 self.nmpc_x_ref, self.nmpc_u_ref = self.odom_2_nmpc_ref(self.px4_odom)
                 break
+            time.sleep(0.2)
         self.tmr_control = rospy.Timer(rospy.Duration(CP.ts_nmpc), self.nmpc_callback)
 
         # - Estimator
@@ -76,8 +79,12 @@ class ControllerNode:
 
         # Pub
         self.body_rate_cmd = AttitudeTarget()
-        self.pub_attitude = rospy.Publisher("mavros/setpoint_raw/attitude", AttitudeTarget, queue_size=10)
-        self.pub_viz_pred = rospy.Publisher("tracking_controller/viz_pred", PoseArray, queue_size=10)
+        self.pub_attitude = rospy.Publisher(f"/{qd_name}/mavros/setpoint_raw/attitude", AttitudeTarget, queue_size=10)
+        self.pub_viz_pred = rospy.Publisher(f"/{qd_name}/tracking_controller/viz_pred", PoseArray, queue_size=10)
+
+        # start action server after all the initialization is done
+        self.pt_pub_server.start()
+        rospy.loginfo(f"Action Server started: /{qd_name}/tracking_controller/pt_pub_action_server")
 
     def pt_pub_callback(self, goal: TrackTrajGoal):
         """handle 3 task:
@@ -117,7 +124,7 @@ class ControllerNode:
             feedback.percent_complete = self.ref_pub.t_now / self.ref_pub.t_all
             feedback.pos_error = pos_err_now
             feedback.yaw_error = yaw_err_now
-            rospy.loginfo(f"percent_complete: {feedback.percent_complete}")
+            rospy.loginfo_throttle(1, f"Trajectory tracking percent complete: {100 * feedback.percent_complete:.2f}%")
             self.pt_pub_server.publish_feedback(feedback)
 
         rospy.loginfo("Trajectory tracking finished.")
@@ -129,7 +136,8 @@ class ControllerNode:
             f"================================================\n"
         )
 
-        self.tmr_hv_throttle_est.start()  # restart hover throttle estimation
+        # restart hover throttle estimation
+        self.tmr_hv_throttle_est = rospy.Timer(rospy.Duration(EP.ts_est), self.hover_throttle_callback)
 
         self.pt_pub_server.set_succeeded(TrackTrajResult(pos_rmse, yaw_rmse))
 
@@ -145,6 +153,7 @@ class ControllerNode:
     def hover_throttle_callback(self, timer: rospy.timer.TimerEvent):
         vz = self.px4_odom.twist.twist.linear.z
         self.k_throttle, _, _ = self.hv_th_estimator.update(vz, self.body_rate_cmd.thrust)
+        # print(f"vz: {vz}, k_throttle: {self.k_throttle}")
 
     def sub_state_callback(self, msg: State):
         self.px4_state = msg

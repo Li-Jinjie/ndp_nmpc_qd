@@ -9,7 +9,7 @@ Description:
 
 import numpy as np
 from .differentiator import Differentiator
-from ..params import estimator_params as EP
+from params import estimator_params as EP
 
 
 class HoverThrottleEstimator:

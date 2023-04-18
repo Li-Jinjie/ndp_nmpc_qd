@@ -14,7 +14,7 @@ import numpy as np
 from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSimSolver, AcadosModel
 import casadi as ca
 
-from scripts.params import nmpc_params as CP
+from params import nmpc_params as CP
 
 
 class NMPCBodyRateController(object):
@@ -88,10 +88,10 @@ class NMPCBodyRateController(object):
 
     def update(self, x0, xr, ur):
         # get x and u, set reference
-        for i in range(self.N):
+        for i in range(self.solver.N):
             yr = np.concatenate((xr[i, :], ur[i, :]))
             self.solver.set(i, "yref", yr)
-        self.solver.set(self.N, "yref", xr[self.N, :])  # final state of x, no u
+        self.solver.set(self.solver.N, "yref", xr[self.solver.N, :])  # final state of x, no u
 
         # self.solver.set(i, "p", fx, fy, fz)
 

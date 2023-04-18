@@ -250,3 +250,6 @@ CATKIN_IGNORE
 ######################### For Me ##################
 /archives
 .idea
+/scripts/nmpc/c_generated_code/
+/scripts/nmpc/acados_models/
+/scripts/nmpc/qd_body_rate_model_acados_ocp.json

@@ -11,7 +11,7 @@ import rospy
 import tf_conversions
 
 from oop_qd_onbd.msg import TrajPt, TrajFullStatePt
-from ..params import fhnp_params as AP, nmpc_params as CP
+from params import fhnp_params as AP, nmpc_params as CP
 from .base_pt_publisher import BasePtPublisher
 from .polym_optimizer import MinMethod
 
@@ -31,13 +31,11 @@ class NMPCRefPublisher(FullStatePtPublisher):
     def __init__(self, xyz_method=MinMethod.SNAP, yaw_method=MinMethod.ACCEL):
         super().__init__(xyz_method, yaw_method)
 
-    def get_nmpc_pts(self, ros_t: rospy.Time) -> (np.Array, np.Array):
-
+    def get_nmpc_pts(self, ros_t: rospy.Time) -> (np.ndarray, np.ndarray):
         xr = np.zeros([CP.N_node + 1, CP.n_states])
         ur = np.zeros([CP.N_node, CP.n_controls])
 
         for i in range(CP.N_node + 1):
-
             is_pred = False if i == 0 else True  # the first state may change is_activate flag, the others are not.
             traj_full_pt: TrajFullStatePt = self.get_full_state_pt(ros_t, is_pred=is_pred)
             xr[i, :] = np.array(
