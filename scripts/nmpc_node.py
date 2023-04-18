@@ -17,6 +17,7 @@ import time
 import numpy as np
 import rospy
 import actionlib
+from typing import List, Tuple
 
 from mavros_msgs.msg import AttitudeTarget, State
 from nav_msgs.msg import Odometry
@@ -38,17 +39,17 @@ class ControllerNode:
         qd_name = rospy.get_param(rospy.get_name() + "/qd_name")
 
         # Action -> reference
-        self.tracking_server = actionlib.SimpleActionServer(
-            "tracking_controller/track_traj", TrackTrajAction, self.track_traj_callback, auto_start=False
+        self.pt_pub_server = actionlib.SimpleActionServer(
+            "tracking_controller/pt_pub_action_server", TrackTrajAction, self.pt_pub_callback, auto_start=False
         )
-        self.tracking_server.start()
-        rospy.loginfo("Action Server started: tracking_controller/track_traj")
+        self.pt_pub_server.start()
+        rospy.loginfo("Action Server started: tracking_controller/pt_pub_action_server")
 
         self.ref_pub = NMPCRefPublisher()
 
         # Sub  -> feedback
         self.px4_state = State()
-        self.px4_odom = Odometry()
+        self.px4_odom = None
         rospy.Subscriber("mavros/state", State, callback=self.sub_state_callback)
         rospy.Subscriber("mavros/local_position/odom", Odometry, self.sub_odom_callback)
 
@@ -62,6 +63,10 @@ class ControllerNode:
         self.nmpc_ctl = NMPCBodyRateController()
         self.nmpc_x_ref = np.zeros([CP.N_node + 1, CP.n_states])
         self.nmpc_u_ref = np.zeros([CP.N_node, CP.n_controls])
+        while True:
+            if self.px4_odom is not None:
+                self.nmpc_x_ref, self.nmpc_u_ref = self.odom_2_nmpc_ref(self.px4_odom)
+                break
         self.tmr_control = rospy.Timer(rospy.Duration(CP.ts_nmpc), self.nmpc_callback)
 
         # - Estimator
@@ -74,7 +79,7 @@ class ControllerNode:
         self.pub_attitude = rospy.Publisher("mavros/setpoint_raw/attitude", AttitudeTarget, queue_size=10)
         self.pub_viz_pred = rospy.Publisher("tracking_controller/viz_pred", PoseArray, queue_size=10)
 
-    def track_traj_callback(self, goal: TrackTrajGoal):
+    def pt_pub_callback(self, goal: TrackTrajGoal):
         """handle 3 task:
         1. receive a trajectory
         2. pub the trajectory reference points to the controller. give back the tracking error
@@ -99,9 +104,9 @@ class ControllerNode:
             self.nmpc_x_ref, self.nmpc_u_ref = self.ref_pub.get_nmpc_pts(rospy.Time.now())
 
             # check for preempt. Action related
-            if self.tracking_server.is_preempt_requested():
+            if self.pt_pub_server.is_preempt_requested():
                 rospy.loginfo("Trajectory tracking preempted.")
-                self.tracking_server.set_preempted()
+                self.pt_pub_server.set_preempted()
                 return  # exit the callback and step into the next callback to handle new goal
 
             # get error
@@ -113,7 +118,7 @@ class ControllerNode:
             feedback.pos_error = pos_err_now
             feedback.yaw_error = yaw_err_now
             rospy.loginfo(f"percent_complete: {feedback.percent_complete}")
-            self.tracking_server.publish_feedback(feedback)
+            self.pt_pub_server.publish_feedback(feedback)
 
         rospy.loginfo("Trajectory tracking finished.")
 
@@ -126,10 +131,16 @@ class ControllerNode:
 
         self.tmr_hv_throttle_est.start()  # restart hover throttle estimation
 
-        self.tracking_server.set_succeeded(TrackTrajResult(pos_rmse, yaw_rmse))
+        self.pt_pub_server.set_succeeded(TrackTrajResult(pos_rmse, yaw_rmse))
 
     def nmpc_callback(self, timer: rospy.timer.TimerEvent):
-        pass
+        """NMPC controller callback
+        only do one thing: track self.nmpc_x_ref and self.nmpc_u_ref
+        """
+        nmpc_x0, _ = self.odom_2_nmpc_x_u(self.px4_odom)
+        u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref)
+        att_tgt = self.nmpc_u_2_att_tgt(u0[0], u0[1], u0[2], u0[3])
+        self.pub_attitude.publish(att_tgt)
 
     def hover_throttle_callback(self, timer: rospy.timer.TimerEvent):
         vz = self.px4_odom.twist.twist.linear.z
@@ -140,6 +151,46 @@ class ControllerNode:
 
     def sub_odom_callback(self, msg: Odometry):
         self.px4_odom = msg
+
+    def odom_2_nmpc_x_u(self, odom: Odometry, is_hover_u: bool = True) -> Tuple[np.ndarray, np.ndarray]:
+        x = np.array(
+            [
+                odom.pose.pose.position.x,
+                odom.pose.pose.position.y,
+                odom.pose.pose.position.z,
+                odom.twist.twist.linear.x,
+                odom.twist.twist.linear.y,
+                odom.twist.twist.linear.z,
+                odom.pose.pose.orientation.w,
+                odom.pose.pose.orientation.x,
+                odom.pose.pose.orientation.y,
+                odom.pose.pose.orientation.z,
+            ]
+        )
+        if is_hover_u:
+            u = np.array([0, 0, 0, CP.mass * CP.gravity])
+        else:
+            raise NotImplementedError("No hover u is not implemented yet")
+
+        return x, u
+
+    def odom_2_nmpc_ref(self, odom: Odometry):
+        x_1, u_1 = self.odom_2_nmpc_x_u(odom, is_hover_u=True)
+        x = np.tile(x_1, (CP.N_node + 1, 1))
+        u = np.tile(u_1, (CP.N_node, 1))
+        return x, u
+
+    def nmpc_u_2_att_tgt(self, rate_x, rate_y, rate_z, c):
+        attitude_tgt = AttitudeTarget()
+
+        attitude_tgt.type_mask = AttitudeTarget.IGNORE_ATTITUDE
+        attitude_tgt.body_rate.x = rate_x
+        attitude_tgt.body_rate.y = rate_y
+        attitude_tgt.body_rate.z = rate_z
+
+        attitude_tgt.thrust = c * CP.mass / self.k_throttle if self.k_throttle != 0 else 0  # throttle conversion
+
+        return attitude_tgt
 
 
 if __name__ == "__main__":
