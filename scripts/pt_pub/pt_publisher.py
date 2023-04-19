@@ -12,7 +12,7 @@ import tf_conversions
 from typing import Tuple
 from nav_msgs.msg import Odometry
 
-from oop_qd_onbd.msg import TrajPt, TrajFullStatePt
+from oop_qd_onbd.msg import TrajPt, TrajFullStatePt, TrajCoefficients
 from params import fhnp_params as AP, nmpc_params as CP
 from .base_pt_publisher import BasePtPublisher
 from .polym_optimizer import MinMethod
@@ -35,7 +35,7 @@ class NMPCRefPublisher(FullStatePtPublisher):
         self.x_long_list = []
         self.u_long_list = []
 
-    def gen_first_ref(self, odom: Odometry):
+    def gen_fix_pt_ref(self, odom: Odometry):
         """first ref, all equal to current odom
 
         :param odom:
@@ -52,11 +52,26 @@ class NMPCRefPublisher(FullStatePtPublisher):
         x_r, u_r = self._get_nmpc_ref_from_long_list()
         return x_r, u_r
 
-    def _get_nmpc_ref_from_long_list(self) -> Tuple[np.ndarray, np.ndarray]:
-        xr_list = self.x_long_list[CP.xr_list_index]
-        ur_list = self.u_long_list[CP.xr_list_index]
-        ur_list.pop(-1)
-        return np.array(xr_list), np.array(ur_list)
+    def reset(self, traj_coeff: TrajCoefficients, ros_t: rospy.Time) -> None:
+        super().reset(traj_coeff, ros_t)
+        self._gen_long_list_w_traj()
+        super().reset(traj_coeff, ros_t)
+
+    def _gen_long_list_w_traj(self):
+        self.x_long_list.clear()
+        self.u_long_list.clear()
+
+        for i in range(CP.long_list_size - 1):
+            ros_t_pred = self.start_ros_t + rospy.Duration.from_sec(i * CP.ts_nmpc)
+            traj_full_pt: TrajFullStatePt = self.get_full_state_pt(ros_t_pred)
+            x, u = self.traj_full_pt_2_x_u(traj_full_pt)
+            self.x_long_list.append(x)
+            self.u_long_list.append(u)
+
+        self.x_long_list.insert(0, self.x_long_list[0])
+        self.u_long_list.insert(0, self.u_long_list[0])  # duplicate the first one
+
+        self.is_activated = False  # must be reset() again to reset the ros_t
 
     def get_nmpc_pts(self, ros_t: rospy.Time) -> (np.ndarray, np.ndarray):
         # remove the first element
@@ -76,6 +91,12 @@ class NMPCRefPublisher(FullStatePtPublisher):
         xr, ur = self._get_nmpc_ref_from_long_list()
 
         return xr, ur
+
+    def _get_nmpc_ref_from_long_list(self) -> Tuple[np.ndarray, np.ndarray]:
+        xr_list = self.x_long_list[CP.xr_list_index]
+        ur_list = self.u_long_list[CP.xr_list_index]
+        ur_list.pop(-1)
+        return np.array(xr_list), np.array(ur_list)
 
     @staticmethod
     def odom_2_nmpc_x(odom: Odometry) -> np.ndarray:

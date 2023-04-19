@@ -68,7 +68,7 @@ class ControllerNode:
         self.nmpc_u_ref = np.zeros([CP.N_node, CP.n_controls])
         while True:
             if self.px4_odom is not None:
-                self.nmpc_x_ref, self.nmpc_u_ref = self.ref_pub.gen_first_ref(self.px4_odom)
+                self.nmpc_x_ref, self.nmpc_u_ref = self.ref_pub.gen_fix_pt_ref(self.px4_odom)
                 break
             time.sleep(0.2)
 
