@@ -147,6 +147,14 @@ class ControllerNode:
         """NMPC controller callback
         only do one thing: track self.nmpc_x_ref and self.nmpc_u_ref
         """
+        # ---- check if the control is too slow ----
+        if timer.last_duration is not None and CP.ts_nmpc < timer.last_duration:
+            rospy.logwarn(
+                f"Control is too slow!"
+                f"ts_ctl: {CP.ts_nmpc * 1000:.3f} ms < ts_one_round: {timer.last_duration * 1000:.3f} ms"
+            )
+        # ------------------------------------------
+
         nmpc_x0, _ = self.odom_2_nmpc_x_u(self.px4_odom)
         u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref)
         self.body_rate_cmd = self.nmpc_u_2_att_tgt(u0[0], u0[1], u0[2], u0[3])
