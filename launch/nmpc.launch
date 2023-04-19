@@ -1,10 +1,8 @@
 <launch>
 <!--    pure nmpc controller-->
-    <arg name="qd_name" default="qd_0" />
-
-    <node pkg="oop_qd_onbd" type="nmpc_node.py" name="nmpc" output="screen">
-        <param name="qd_name" value="$(arg qd_name)"/>
-    </node>
-
+    <group ns="fhnp">
+        <node pkg="oop_qd_onbd" type="nmpc_node.py" name="nmpc_node" output="screen"/>
+<!--        mavros_node-->
+    </group>
 
 </launch>

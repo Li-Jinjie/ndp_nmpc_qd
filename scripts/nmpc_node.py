@@ -22,7 +22,7 @@ from typing import List, Tuple
 
 from mavros_msgs.msg import AttitudeTarget, State
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseArray, TransformStamped
+from geometry_msgs.msg import Point, Quaternion, Pose, PoseArray, TransformStamped
 from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback
 
 from pt_pub import NMPCRefPublisher
@@ -34,13 +34,14 @@ from params import nmpc_params as CP, estimator_params as EP  # TODO: where is t
 
 class ControllerNode:
     def __init__(self) -> None:
-        rospy.init_node("tracking_controller", anonymous=False)
-        qd_name = rospy.get_param(rospy.get_name() + "/qd_name")
-        self.qd_name = qd_name
+        self.node_name = "traj_tracker"
+        rospy.init_node(self.node_name, anonymous=False)
+
+        self.namespace = rospy.get_namespace().rstrip("/")
 
         # Action -> reference
         self.pt_pub_server = actionlib.SimpleActionServer(
-            f"/{qd_name}/tracking_controller/pt_pub_action_server",
+            f"{self.node_name}/pt_pub_action_server",
             TrackTrajAction,
             self.pt_pub_callback,
             auto_start=False,
@@ -51,8 +52,8 @@ class ControllerNode:
         # Sub  -> feedback
         self.px4_state = State()
         self.px4_odom = None
-        rospy.Subscriber(f"/{qd_name}/mavros/state", State, callback=self.sub_state_callback)
-        rospy.Subscriber(f"/{qd_name}/mavros/local_position/odom", Odometry, self.sub_odom_callback)
+        rospy.Subscriber(f"mavros/state", State, callback=self.sub_state_callback)
+        rospy.Subscriber(f"mavros/local_position/odom", Odometry, self.sub_odom_callback)
 
         # Wait for Flight Controller connection
         rospy.loginfo("Waiting for the Flight Controller (eg. PX4) connection...")
@@ -71,6 +72,7 @@ class ControllerNode:
                 break
             time.sleep(0.2)
         self.tmr_control = rospy.Timer(rospy.Duration(CP.ts_nmpc), self.nmpc_callback)
+        self.tmr_pred_viz = rospy.Timer(rospy.Duration(0.05), self.viz_nmpc_pred_callback)
 
         # - Estimator
         self.k_throttle = EP.k_throttle_init
@@ -79,12 +81,12 @@ class ControllerNode:
 
         # Pub
         self.body_rate_cmd = AttitudeTarget()
-        self.pub_attitude = rospy.Publisher(f"/{qd_name}/mavros/setpoint_raw/attitude", AttitudeTarget, queue_size=10)
-        self.pub_viz_pred = rospy.Publisher(f"/{qd_name}/tracking_controller/viz_pred", PoseArray, queue_size=10)
+        self.pub_attitude = rospy.Publisher(f"mavros/setpoint_raw/attitude", AttitudeTarget, queue_size=10)
+        self.pub_viz_pred = rospy.Publisher(f"{self.node_name}/viz_pred", PoseArray, queue_size=10)
 
         # start action server after all the initialization is done
         self.pt_pub_server.start()
-        rospy.loginfo(f"Action Server started: /{qd_name}/tracking_controller/pt_pub_action_server")
+        rospy.loginfo(f"Action Server started: {self.node_name}/pt_pub_action_server")
 
     def pt_pub_callback(self, goal: TrackTrajGoal):
         """handle 3 task:
@@ -150,6 +152,23 @@ class ControllerNode:
         self.body_rate_cmd = self.nmpc_u_2_att_tgt(u0[0], u0[1], u0[2], u0[3])
         self.pub_attitude.publish(self.body_rate_cmd)
 
+    def viz_nmpc_pred_callback(self, timer: rospy.timer.TimerEvent):
+        flag = "ref"  # ref or pred
+        viz_pred = PoseArray()
+        for i in range(self.nmpc_ctl.solver.N):
+            if flag == "ref":
+                x = self.nmpc_x_ref[i]
+            else:
+                x = self.nmpc_ctl.solver.get(i, "x")
+
+            p = Point(x[0], x[1], x[2])
+            q = Quaternion(x[3], x[4], x[5], x[6])
+            pose = Pose(p, q)
+            viz_pred.poses.append(pose)
+            viz_pred.header.stamp = rospy.Time.now()
+            viz_pred.header.frame_id = "map"
+        self.pub_viz_pred.publish(viz_pred)
+
     def hover_throttle_callback(self, timer: rospy.timer.TimerEvent):
         vz = self.px4_odom.twist.twist.linear.z
         self.k_throttle, _, _ = self.hv_th_estimator.update(vz, self.body_rate_cmd.thrust)
@@ -166,7 +185,7 @@ class ControllerNode:
 
         t.header.stamp = rospy.Time.now()
         t.header.frame_id = "map"
-        t.child_frame_id = self.qd_name
+        t.child_frame_id = self.namespace
         t.transform.translation = msg.pose.pose.position
         t.transform.rotation = msg.pose.pose.orientation
 
