@@ -161,9 +161,10 @@ class ControllerNode:
             else:
                 x = self.nmpc_ctl.solver.get(i, "x")
 
-            p = Point(x[0], x[1], x[2])
-            q = Quaternion(x[3], x[4], x[5], x[6])
+            p = Point(x=x[0], y=x[1], z=x[2])
+            q = Quaternion(w=x[6], x=x[7], y=x[8], z=x[9])  # qw, qx, qy, qz
             pose = Pose(p, q)
+
             viz_pred.poses.append(pose)
             viz_pred.header.stamp = rospy.Time.now()
             viz_pred.header.frame_id = "map"
@@ -177,7 +178,7 @@ class ControllerNode:
         self.px4_state = msg
 
     def sub_odom_callback(self, msg: Odometry):
-        self.px4_odom = msg
+        self.px4_odom = msg  # note that qw < 0
 
         # tf2 pub
         br = tf2_ros.TransformBroadcaster()
@@ -185,7 +186,7 @@ class ControllerNode:
 
         t.header.stamp = rospy.Time.now()
         t.header.frame_id = "map"
-        t.child_frame_id = self.namespace
+        t.child_frame_id = self.namespace + "/base_link"
         t.transform.translation = msg.pose.pose.position
         t.transform.rotation = msg.pose.pose.orientation
 
@@ -200,12 +201,12 @@ class ControllerNode:
                 odom.twist.twist.linear.x,
                 odom.twist.twist.linear.y,
                 odom.twist.twist.linear.z,
-                odom.pose.pose.orientation.w,
-                odom.pose.pose.orientation.x,
-                odom.pose.pose.orientation.y,
-                odom.pose.pose.orientation.z,
+                -odom.pose.pose.orientation.w,
+                -odom.pose.pose.orientation.x,
+                -odom.pose.pose.orientation.y,
+                -odom.pose.pose.orientation.z,
             ]
-        )
+        )  # Quaternion: from px4 convention to ros convention
         if is_hover_u:
             u = np.array([0, 0, 0, CP.mass * CP.gravity])
         else:

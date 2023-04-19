@@ -37,7 +37,8 @@ class NMPCRefPublisher(FullStatePtPublisher):
 
         for i in range(CP.N_node + 1):
             is_pred = False if i == 0 else True  # the first state may change is_activate flag, the others are not.
-            traj_full_pt: TrajFullStatePt = self.get_full_state_pt(ros_t, is_pred=is_pred)
+            ros_t_pred = ros_t + rospy.Duration.from_sec(i * CP.th_pred)
+            traj_full_pt: TrajFullStatePt = self.get_full_state_pt(ros_t_pred, is_pred=is_pred)
             xr[i, :] = np.array(
                 [
                     traj_full_pt.pose.position.x,
@@ -115,11 +116,11 @@ def diff_flatness(traj_pt: TrajPt) -> TrajFullStatePt:
     t_mtx[3, 3] = 1
     q_xyzw = tf_conversions.transformations.quaternion_from_matrix(t_mtx)
 
-    # change signs to match px4
-    traj_full_state.pose.orientation.x = -q_xyzw[0]
-    traj_full_state.pose.orientation.y = -q_xyzw[1]
-    traj_full_state.pose.orientation.z = -q_xyzw[2]
-    traj_full_state.pose.orientation.w = -q_xyzw[3]
+    # ROS convention, w > 0
+    traj_full_state.pose.orientation.x = q_xyzw[0]
+    traj_full_state.pose.orientation.y = q_xyzw[1]
+    traj_full_state.pose.orientation.z = q_xyzw[2]
+    traj_full_state.pose.orientation.w = q_xyzw[3]
 
     traj_full_state.twist.angular.x = p.item()
     traj_full_state.twist.angular.y = q.item()
