@@ -55,7 +55,7 @@ class NMPCRefPublisher(FullStatePtPublisher):
     def reset(self, traj_coeff: TrajCoefficients, ros_t: rospy.Time) -> None:
         super().reset(traj_coeff, ros_t)
         self._gen_long_list_w_traj()
-        super().reset(traj_coeff, ros_t)
+        super().reset(traj_coeff, rospy.Time.now())
 
     def _gen_long_list_w_traj(self):
         self.x_long_list.clear()
