@@ -7,7 +7,7 @@ import numpy as np
 ######################################################################################
 
 mass = 1.4844  # kg .  add realsense and gps modules: 1.5344 kg; pure aircraft: 1.4844 kg
-l_frame = 0.2744  # m   # TODO: change this value to 0.1372
+l_frame = 0.1372  # m
 alpha_frame = 45.0 * np.pi / 180.0  # rad
 gravity = 9.81  # m/s^2
 Jx = 0.0094  # kg m^2
@@ -20,8 +20,8 @@ c_max = gravity / 0.36  # TODO:  change to fc_max = 4.0 * k_t * (o_max**2)  # N
 
 
 #   Propeller thrust / torque parameters
-o_max = 24000  # RPM   # TODO: change unit to kRPM
-o_min = 2600  # RPM
+o_max = 24000 / 1000  # kRPM
+o_min = 2600 / 1000  # kRPM
 
 c_q = 3.7611e-10  # Nm/RPM^2
 c_t = 2.8158e-08  # N/RPM^2
