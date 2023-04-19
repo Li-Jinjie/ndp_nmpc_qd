@@ -68,9 +68,10 @@ class ControllerNode:
         self.nmpc_u_ref = np.zeros([CP.N_node, CP.n_controls])
         while True:
             if self.px4_odom is not None:
-                self.nmpc_x_ref, self.nmpc_u_ref = self.odom_2_nmpc_ref(self.px4_odom)
+                self.nmpc_x_ref, self.nmpc_u_ref = self.ref_pub.gen_first_ref(self.px4_odom)
                 break
             time.sleep(0.2)
+
         self.tmr_control = rospy.Timer(rospy.Duration(CP.ts_nmpc), self.nmpc_callback)
         self.tmr_pred_viz = rospy.Timer(rospy.Duration(0.05), self.viz_nmpc_pred_callback)
 
@@ -106,6 +107,7 @@ class ControllerNode:
         pos_rmse = 0
         yaw_rmse = 0
 
+        r = rospy.Rate(1 / CP.ts_nmpc)
         while self.ref_pub.is_activated:
             # get reference
             # note that the pt_pub is asynchronous with controller, that is to say,
@@ -128,6 +130,8 @@ class ControllerNode:
             feedback.yaw_error = yaw_err_now
             rospy.loginfo_throttle(1, f"Trajectory tracking percent complete: {100 * feedback.percent_complete:.2f}%")
             self.pt_pub_server.publish_feedback(feedback)
+
+            r.sleep()
 
         rospy.loginfo("Trajectory tracking finished.")
 
@@ -155,7 +159,7 @@ class ControllerNode:
             )
         # ------------------------------------------
 
-        nmpc_x0, _ = self.odom_2_nmpc_x_u(self.px4_odom)
+        nmpc_x0 = self.ref_pub.odom_2_nmpc_x(self.px4_odom)
         u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref)
         self.body_rate_cmd = self.nmpc_u_2_att_tgt(u0[0], u0[1], u0[2], u0[3])
         self.pub_attitude.publish(self.body_rate_cmd)
@@ -199,34 +203,6 @@ class ControllerNode:
         t.transform.rotation = msg.pose.pose.orientation
 
         br.sendTransform(t)
-
-    def odom_2_nmpc_x_u(self, odom: Odometry, is_hover_u: bool = True) -> Tuple[np.ndarray, np.ndarray]:
-        x = np.array(
-            [
-                odom.pose.pose.position.x,
-                odom.pose.pose.position.y,
-                odom.pose.pose.position.z,
-                odom.twist.twist.linear.x,
-                odom.twist.twist.linear.y,
-                odom.twist.twist.linear.z,
-                -odom.pose.pose.orientation.w,
-                -odom.pose.pose.orientation.x,
-                -odom.pose.pose.orientation.y,
-                -odom.pose.pose.orientation.z,
-            ]
-        )  # Quaternion: from px4 convention to ros convention
-        if is_hover_u:
-            u = np.array([0, 0, 0, CP.mass * CP.gravity])
-        else:
-            raise NotImplementedError("No hover u is not implemented yet")
-
-        return x, u
-
-    def odom_2_nmpc_ref(self, odom: Odometry):
-        x_1, u_1 = self.odom_2_nmpc_x_u(odom, is_hover_u=True)
-        x = np.tile(x_1, (CP.N_node + 1, 1))
-        u = np.tile(u_1, (CP.N_node, 1))
-        return x, u
 
     def nmpc_u_2_att_tgt(self, rate_x, rate_y, rate_z, c):
         attitude_tgt = AttitudeTarget()

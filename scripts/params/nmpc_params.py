@@ -8,7 +8,7 @@ mass = QD.mass
 # basic params
 N_node = 20
 T_horizon = 2
-ts_nmpc = 0.01  # 100 Hz
+ts_nmpc = 0.02  # 100 Hz
 th_pred = T_horizon / N_node  # seconds
 
 n_states = 10
@@ -33,3 +33,11 @@ Qq = 10  # 400
 Qq_z = 10
 Rw = 10  # 10
 Rc = 5
+
+# params for nmpc pt_pub
+# note that the nmpc pt_pub construct a long list, so that each iteration the pt_pub only needs to calculate
+# the first points and pop the last. This can save a lot of time comparing with for loop.
+long_list_size = int(th_pred * N_node / ts_nmpc) + 1
+if th_pred * N_node / ts_nmpc - int(th_pred * N_node / ts_nmpc) > 1e-6:
+    raise ValueError("please check: th_pred must be an integer multiple of th_nmpc")
+xr_list_index = slice(0, long_list_size, int(th_pred / ts_nmpc))

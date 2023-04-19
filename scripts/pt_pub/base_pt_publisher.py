@@ -78,11 +78,12 @@ class BasePtPublisher:
             np.sqrt(self.tracking_yaw_err / self.tracking_pt_num),  # rmse for yaw
         )
 
-    def get_pt(self, ros_t: rospy.Time, is_pred: bool = False) -> TrajPt:
+    def get_pt(self, ros_t: rospy.Time, t_pred: float = 0.0, traj_pt_now: TrajPt = None) -> TrajPt:
         """
         get the trajectory point at time t.
-        :param ros_t: time using rospy.Time.now(
-        :param is_pred: is this a prediction point? if True, will not change self.is_activate.
+        :param ros_t: time using rospy.Time.now()
+        :param t_pred: prediction time. used in nmpc to check final point
+        :param traj_pt_now: when t_pred > 0, use traj_no_pred to update self.traj_pt_now
         :return:
         """
         traj_pt = TrajPt()
@@ -92,7 +93,7 @@ class BasePtPublisher:
         # Finish Detection
         if t >= self.traj_coeff.traj_time_cum[-1]:  # change to "hover" after finished
             traj_pt.position = self.traj_coeff.final_pt
-            if not is_pred:
+            if t - t_pred >= self.traj_coeff.traj_time_cum[-1]:
                 self.is_activated = False
             return traj_pt
 
@@ -131,9 +132,8 @@ class BasePtPublisher:
         traj_pt.yaw_dot = _get_output_value(self.optr_yaw, 1, t_scaled, t_segment, c_yaw)
 
         # Update States Now
-        if not is_pred:
-            self.t_now = t
-            self.traj_pt_now = traj_pt
+        self.t_now = t - t_pred
+        self.traj_pt_now = traj_pt_now if t_pred > 0 and isinstance(traj_pt_now, TrajPt) else traj_pt
 
         return traj_pt
 

@@ -9,6 +9,8 @@ Description:
 import numpy as np
 import rospy
 import tf_conversions
+from typing import Tuple
+from nav_msgs.msg import Odometry
 
 from oop_qd_onbd.msg import TrajPt, TrajFullStatePt
 from params import fhnp_params as AP, nmpc_params as CP
@@ -20,8 +22,8 @@ class FullStatePtPublisher(BasePtPublisher):
     def __init__(self, xyz_method=MinMethod.SNAP, yaw_method=MinMethod.ACCEL):
         super().__init__(xyz_method, yaw_method)
 
-    def get_full_state_pt(self, ros_t: rospy.Time, is_pred: bool = False) -> TrajFullStatePt:
-        traj_pt = self.get_pt(ros_t, is_pred)
+    def get_full_state_pt(self, ros_t: rospy.Time, t_pred: float = 0.0, traj_pt_now: TrajPt = None) -> TrajFullStatePt:
+        traj_pt = self.get_pt(ros_t, t_pred, traj_pt_now)
         traj_full_state_pt = diff_flatness(traj_pt)
 
         return traj_full_state_pt
@@ -30,42 +32,106 @@ class FullStatePtPublisher(BasePtPublisher):
 class NMPCRefPublisher(FullStatePtPublisher):
     def __init__(self, xyz_method=MinMethod.SNAP, yaw_method=MinMethod.ACCEL):
         super().__init__(xyz_method, yaw_method)
+        self.x_long_list = []
+        self.u_long_list = []
+
+    def gen_first_ref(self, odom: Odometry):
+        """first ref, all equal to current odom
+
+        :param odom:
+        :return:
+        """
+        self.x_long_list.clear()
+        self.u_long_list.clear()
+
+        x_1 = self.odom_2_nmpc_x(odom)
+        u_1 = np.array([0, 0, 0, CP.mass * CP.gravity])
+        self.x_long_list = [x_1] * CP.long_list_size
+        self.u_long_list = [u_1] * CP.long_list_size
+
+        x_r, u_r = self._get_nmpc_ref_from_long_list()
+        return x_r, u_r
+
+    def _get_nmpc_ref_from_long_list(self) -> Tuple[np.ndarray, np.ndarray]:
+        xr_list = self.x_long_list[CP.xr_list_index]
+        ur_list = self.u_long_list[CP.xr_list_index]
+        ur_list.pop(-1)
+        return np.array(xr_list), np.array(ur_list)
 
     def get_nmpc_pts(self, ros_t: rospy.Time) -> (np.ndarray, np.ndarray):
-        xr = np.zeros([CP.N_node + 1, CP.n_states])
-        ur = np.zeros([CP.N_node, CP.n_controls])
+        # remove the first element
+        self.x_long_list.pop(0)
+        self.u_long_list.pop(0)
 
-        for i in range(CP.N_node + 1):
-            is_pred = False if i == 0 else True  # the first state may change is_activate flag, the others are not.
-            ros_t_pred = ros_t + rospy.Duration.from_sec(i * CP.th_pred)
-            traj_full_pt: TrajFullStatePt = self.get_full_state_pt(ros_t_pred, is_pred=is_pred)
-            xr[i, :] = np.array(
-                [
-                    traj_full_pt.pose.position.x,
-                    traj_full_pt.pose.position.y,
-                    traj_full_pt.pose.position.z,
-                    traj_full_pt.twist.linear.x,
-                    traj_full_pt.twist.linear.y,
-                    traj_full_pt.twist.linear.z,
-                    traj_full_pt.pose.orientation.w,
-                    traj_full_pt.pose.orientation.x,
-                    traj_full_pt.pose.orientation.y,
-                    traj_full_pt.pose.orientation.z,
-                ]
-            )
+        # get new point
+        ros_t_pred = ros_t + rospy.Duration.from_sec(CP.T_horizon)
+        traj_pt_now = self.x_2_traj_pt(self.x_long_list[0])
+        traj_full_pt: TrajFullStatePt = self.get_full_state_pt(ros_t_pred, t_pred=CP.T_horizon, traj_pt_now=traj_pt_now)
+        x, u = self.traj_full_pt_2_x_u(traj_full_pt)
 
-            # last stage has no desired u
-            if i < CP.N_node:
-                ur[i, :] = np.array(
-                    [
-                        traj_full_pt.twist.angular.x,
-                        traj_full_pt.twist.angular.y,
-                        traj_full_pt.twist.angular.z,
-                        traj_full_pt.collective_force / AP.mass,
-                    ]
-                )
+        # add new element
+        self.x_long_list.append(x)
+        self.u_long_list.append(u)
+
+        xr, ur = self._get_nmpc_ref_from_long_list()
 
         return xr, ur
+
+    @staticmethod
+    def odom_2_nmpc_x(odom: Odometry) -> np.ndarray:
+        x = np.array(
+            [
+                odom.pose.pose.position.x,
+                odom.pose.pose.position.y,
+                odom.pose.pose.position.z,
+                odom.twist.twist.linear.x,
+                odom.twist.twist.linear.y,
+                odom.twist.twist.linear.z,
+                -odom.pose.pose.orientation.w,
+                -odom.pose.pose.orientation.x,
+                -odom.pose.pose.orientation.y,
+                -odom.pose.pose.orientation.z,
+            ]
+        )  # Quaternion: from px4 convention to ros convention
+
+        return x
+
+    @staticmethod
+    def traj_full_pt_2_x_u(traj_full_pt: TrajFullStatePt) -> (np.ndarray, np.ndarray):
+        x = np.array(
+            [
+                traj_full_pt.pose.position.x,
+                traj_full_pt.pose.position.y,
+                traj_full_pt.pose.position.z,
+                traj_full_pt.twist.linear.x,
+                traj_full_pt.twist.linear.y,
+                traj_full_pt.twist.linear.z,
+                traj_full_pt.pose.orientation.w,
+                traj_full_pt.pose.orientation.x,
+                traj_full_pt.pose.orientation.y,
+                traj_full_pt.pose.orientation.z,
+            ]
+        )
+        u = np.array(
+            [
+                traj_full_pt.twist.angular.x,
+                traj_full_pt.twist.angular.y,
+                traj_full_pt.twist.angular.z,
+                traj_full_pt.collective_force / AP.mass,
+            ]
+        )
+        return x, u
+
+    @staticmethod
+    def x_2_traj_pt(x: np.ndarray) -> TrajPt:
+        traj_pt = TrajPt()
+        traj_pt.position.x = x[0]
+        traj_pt.position.y = x[1]
+        traj_pt.position.z = x[2]
+        traj_pt.velocity.x = x[3]
+        traj_pt.velocity.y = x[4]
+        traj_pt.velocity.z = x[5]
+        return traj_pt
 
 
 def diff_flatness(traj_pt: TrajPt) -> TrajFullStatePt:
