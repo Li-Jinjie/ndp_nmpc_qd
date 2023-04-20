@@ -23,7 +23,7 @@ from typing import List, Tuple
 from mavros_msgs.msg import AttitudeTarget, State
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, Quaternion, Pose, PoseArray, TransformStamped
-from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback
+from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback, MultiTrajFullStatePt
 
 from pt_pub import NMPCRefPublisher
 from nmpc import NMPCBodyRateController
@@ -73,7 +73,7 @@ class ControllerNode:
             time.sleep(0.2)
 
         self.tmr_control = rospy.Timer(rospy.Duration(CP.ts_nmpc), self.nmpc_callback)
-        self.tmr_pred_viz = rospy.Timer(rospy.Duration(0.05), self.viz_nmpc_pred_callback)
+        # self.tmr_pred_viz = rospy.Timer(rospy.Duration(0.05), self.viz_nmpc_pred_callback)
 
         # - Estimator
         self.k_throttle = EP.k_throttle_init
@@ -84,6 +84,7 @@ class ControllerNode:
         self.body_rate_cmd = AttitudeTarget()
         self.pub_attitude = rospy.Publisher(f"mavros/setpoint_raw/attitude", AttitudeTarget, queue_size=10)
         self.pub_viz_pred = rospy.Publisher(f"{self.node_name}/viz_pred", PoseArray, queue_size=10)
+        self.pub_pred = rospy.Publisher(f"{self.node_name}/pred", MultiTrajFullStatePt, queue_size=10)
 
         # start action server after all the initialization is done
         self.pt_pub_server.start()
@@ -169,6 +170,21 @@ class ControllerNode:
         self.body_rate_cmd = self.nmpc_u_2_att_tgt(u0[0], u0[1], u0[2], u0[3])
         self.pub_attitude.publish(self.body_rate_cmd)
 
+        # for formation
+        self.do_pub_pred()
+
+    def do_pub_pred(self):
+        # for formation
+        mul_full_state_pts = MultiTrajFullStatePt()
+        for i in range(self.nmpc_ctl.solver.N):
+            x = self.nmpc_ctl.solver.get(i, "x")
+            full_state_pt = self.ref_pub.x_2_full_state_pt(x)
+            mul_full_state_pts.traj_pts.append(full_state_pt)
+
+        mul_full_state_pts.header.stamp = rospy.Time.now()
+        mul_full_state_pts.header.frame_id = "map"
+        self.pub_pred.publish(mul_full_state_pts)
+
     def viz_nmpc_pred_callback(self, timer: rospy.timer.TimerEvent):
         flag = "pred"  # ref or pred
         viz_pred = PoseArray()
@@ -183,8 +199,8 @@ class ControllerNode:
             pose = Pose(p, q)
 
             viz_pred.poses.append(pose)
-            viz_pred.header.stamp = rospy.Time.now()
-            viz_pred.header.frame_id = "map"
+        viz_pred.header.stamp = rospy.Time.now()
+        viz_pred.header.frame_id = "map"
         self.pub_viz_pred.publish(viz_pred)
 
     def hover_throttle_callback(self, timer: rospy.timer.TimerEvent):

@@ -167,6 +167,8 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   scripts/nmpc_node.py
+  scripts/nmpc_leader_node.py
+  scripts/nmpc_follower_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

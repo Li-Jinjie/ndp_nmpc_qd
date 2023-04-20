@@ -154,6 +154,21 @@ class NMPCRefPublisher(FullStatePtPublisher):
         traj_pt.velocity.z = x[5]
         return traj_pt
 
+    @staticmethod
+    def x_2_full_state_pt(x: np.ndarray) -> TrajFullStatePt:
+        traj_full_state_pt = TrajFullStatePt()
+        traj_full_state_pt.pose.position.x = x[0]
+        traj_full_state_pt.pose.position.y = x[1]
+        traj_full_state_pt.pose.position.z = x[2]
+        traj_full_state_pt.twist.linear.x = x[3]
+        traj_full_state_pt.twist.linear.y = x[4]
+        traj_full_state_pt.twist.linear.z = x[5]
+        traj_full_state_pt.pose.orientation.w = x[6]
+        traj_full_state_pt.pose.orientation.x = x[7]
+        traj_full_state_pt.pose.orientation.y = x[8]
+        traj_full_state_pt.pose.orientation.z = x[9]
+        return traj_full_state_pt
+
 
 def diff_flatness(traj_pt: TrajPt) -> TrajFullStatePt:
     """generate full states from [pos, vel, acc, jerk], ENU coordinates
