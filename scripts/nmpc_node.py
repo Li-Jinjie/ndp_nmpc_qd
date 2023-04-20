@@ -56,10 +56,10 @@ class ControllerNode:
         rospy.Subscriber(f"mavros/local_position/odom", Odometry, self.sub_odom_callback)
 
         # Wait for Flight Controller connection
-        rospy.loginfo("Waiting for the Flight Controller (eg. PX4) connection...")
+        rospy.loginfo(f"{self.namespace}: Waiting for the Flight Controller (eg. PX4) connection...")
         while not rospy.is_shutdown() and not self.px4_state.connected:
             time.sleep(0.5)
-        rospy.loginfo("Flight Controller connected!")
+        rospy.loginfo(f"{self.namespace}: Flight Controller connected!")
 
         # Timer
         # - Controller
@@ -87,7 +87,7 @@ class ControllerNode:
 
         # start action server after all the initialization is done
         self.pt_pub_server.start()
-        rospy.loginfo(f"Action Server started: {self.node_name}/pt_pub_action_server")
+        rospy.loginfo(f"{self.namespace}: Action Server started: {self.node_name}/pt_pub_action_server")
 
     def pt_pub_callback(self, goal: TrackTrajGoal):
         """handle 3 task:
@@ -98,7 +98,7 @@ class ControllerNode:
         :param goal:
         :return:
         """
-        rospy.loginfo("Receive a trajectory. Start tracking trajectory...")
+        rospy.loginfo(f"{self.namespace}: Receive a trajectory. Start tracking trajectory...")
 
         self.tmr_hv_throttle_est.shutdown()  # stop hover throttle estimation
 
@@ -116,7 +116,7 @@ class ControllerNode:
 
             # check for preempt. Action related
             if self.pt_pub_server.is_preempt_requested():
-                rospy.loginfo("Trajectory tracking preempted.")
+                rospy.loginfo(f"{self.namespace}: Trajectory tracking preempted.")
                 self.pt_pub_server.set_preempted()
                 return  # exit the callback and step into the next callback to handle new goal
 
@@ -128,14 +128,17 @@ class ControllerNode:
             feedback.percent_complete = self.ref_pub.t_now / self.ref_pub.t_all
             feedback.pos_error = pos_err_now
             feedback.yaw_error = yaw_err_now
-            rospy.loginfo_throttle(1, f"Trajectory tracking percent complete: {100 * feedback.percent_complete:.2f}%")
+            rospy.loginfo_throttle(
+                1, f"{self.namespace}: Trajectory tracking percent complete: {100 * feedback.percent_complete:.2f}%"
+            )
             self.pt_pub_server.publish_feedback(feedback)
 
             r.sleep()
 
-        rospy.loginfo("Trajectory tracking finished.")
+        rospy.loginfo(f"{self.namespace}: Trajectory tracking finished.")
 
-        print(
+        rospy.loginfo(
+            f"{self.namespace}: \n"
             f"\n================================================\n"
             f"Positional error (RMSE): {pos_rmse:.6f} [m]\n"
             f"heading error (RMSE): {yaw_rmse:.6f} [deg]\n"
@@ -156,7 +159,7 @@ class ControllerNode:
         # ---- check if the control is too slow ----
         if timer.last_duration is not None and CP.ts_nmpc < timer.last_duration:
             rospy.logwarn(
-                f"Control is too slow!"
+                f"{self.namespace}: Control is too slow!"
                 f"ts_ctl: {CP.ts_nmpc * 1000:.3f} ms < ts_one_round: {timer.last_duration * 1000:.3f} ms"
             )
         # ------------------------------------------

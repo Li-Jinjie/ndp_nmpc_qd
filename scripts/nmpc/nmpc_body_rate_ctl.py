@@ -84,7 +84,7 @@ class NMPCBodyRateController(object):
 
         # compile acados ocp
         json_file_path = os.path.join("./" + opt_model.name + "_acados_ocp.json")
-        self.solver = AcadosOcpSolver(ocp, json_file=json_file_path)
+        self.solver = AcadosOcpSolver(ocp, json_file=json_file_path, build=False)
 
     def update(self, x0, xr, ur):
         # get x and u, set reference
