@@ -18,7 +18,7 @@ from params import nmpc_params as CP
 
 
 class NMPCBodyRateController(object):
-    def __init__(self):
+    def __init__(self, is_build_acados=True):
         opt_model = BodyRateModel().model
 
         nx = opt_model.x.size()[0]
@@ -84,7 +84,7 @@ class NMPCBodyRateController(object):
 
         # compile acados ocp
         json_file_path = os.path.join("./" + opt_model.name + "_acados_ocp.json")
-        self.solver = AcadosOcpSolver(ocp, json_file=json_file_path, build=False)
+        self.solver = AcadosOcpSolver(ocp, json_file=json_file_path, build=is_build_acados)
 
     def update(self, x0, xr, ur):
         # get x and u, set reference

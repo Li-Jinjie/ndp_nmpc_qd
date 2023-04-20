@@ -78,7 +78,7 @@ class BasePtPublisher:
             np.sqrt(self.tracking_yaw_err / self.tracking_pt_num),  # rmse for yaw
         )
 
-    def get_pt(self, ros_t: rospy.Time, t_pred: float = 0.0, traj_pt_now: TrajPt = None) -> TrajPt:
+    def get_traj_pt(self, ros_t: rospy.Time, t_pred: float = 0.0, traj_pt_now: TrajPt = None) -> TrajPt:
         """
         get the trajectory point at time t.
         :param ros_t: time using rospy.Time.now()

@@ -22,8 +22,10 @@ class FullStatePtPublisher(BasePtPublisher):
     def __init__(self, xyz_method=MinMethod.SNAP, yaw_method=MinMethod.ACCEL):
         super().__init__(xyz_method, yaw_method)
 
-    def get_full_state_pt(self, ros_t: rospy.Time, t_pred: float = 0.0, traj_pt_now: TrajPt = None) -> TrajFullStatePt:
-        traj_pt = self.get_pt(ros_t, t_pred, traj_pt_now)
+    def get_traj_full_state_pt(
+        self, ros_t: rospy.Time, t_pred: float = 0.0, traj_pt_now: TrajPt = None
+    ) -> TrajFullStatePt:
+        traj_pt = self.get_traj_pt(ros_t, t_pred, traj_pt_now)
         traj_full_state_pt = diff_flatness(traj_pt)
 
         return traj_full_state_pt
@@ -63,7 +65,7 @@ class NMPCRefPublisher(FullStatePtPublisher):
 
         for i in range(CP.long_list_size - 1):
             ros_t_pred = self.start_ros_t + rospy.Duration.from_sec(i * CP.ts_nmpc)
-            traj_full_pt: TrajFullStatePt = self.get_full_state_pt(ros_t_pred)
+            traj_full_pt: TrajFullStatePt = self.get_traj_full_state_pt(ros_t_pred)
             x, u = self.traj_full_pt_2_x_u(traj_full_pt)
             self.x_long_list.append(x)
             self.u_long_list.append(u)
@@ -81,7 +83,9 @@ class NMPCRefPublisher(FullStatePtPublisher):
         # get new point
         ros_t_pred = ros_t + rospy.Duration.from_sec(CP.T_horizon)
         traj_pt_now = self.x_2_traj_pt(self.x_long_list[0])
-        traj_full_pt: TrajFullStatePt = self.get_full_state_pt(ros_t_pred, t_pred=CP.T_horizon, traj_pt_now=traj_pt_now)
+        traj_full_pt: TrajFullStatePt = self.get_traj_full_state_pt(
+            ros_t_pred, t_pred=CP.T_horizon, traj_pt_now=traj_pt_now
+        )
         x, u = self.traj_full_pt_2_x_u(traj_full_pt)
 
         # add new element
@@ -167,6 +171,14 @@ class NMPCRefPublisher(FullStatePtPublisher):
         traj_full_state_pt.pose.orientation.x = x[7]
         traj_full_state_pt.pose.orientation.y = x[8]
         traj_full_state_pt.pose.orientation.z = x[9]
+        return traj_full_state_pt
+
+    def x_u_2_traj_full_pt(self, x: np.ndarray, u: np.ndarray) -> TrajFullStatePt:
+        traj_full_state_pt = self.x_2_full_state_pt(x)
+        traj_full_state_pt.twist.angular.x = u[0]
+        traj_full_state_pt.twist.angular.y = u[1]
+        traj_full_state_pt.twist.angular.z = u[2]
+        traj_full_state_pt.collective_force = u[3] * AP.mass
         return traj_full_state_pt
 
 
