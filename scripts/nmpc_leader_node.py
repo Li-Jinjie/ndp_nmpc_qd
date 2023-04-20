@@ -63,7 +63,7 @@ class ControllerNode:
 
         # Timer
         # - Controller
-        self.nmpc_ctl = NMPCBodyRateController()
+        self.nmpc_ctl = NMPCBodyRateController(is_build_acados=False)
         self.nmpc_x_ref = np.zeros([CP.N_node + 1, CP.n_states])
         self.nmpc_u_ref = np.zeros([CP.N_node, CP.n_controls])
         while True:
@@ -73,7 +73,7 @@ class ControllerNode:
             time.sleep(0.2)
 
         self.tmr_control = rospy.Timer(rospy.Duration(CP.ts_nmpc), self.nmpc_callback)
-        # self.tmr_pred_viz = rospy.Timer(rospy.Duration(0.05), self.viz_nmpc_pred_callback)
+        self.tmr_pred_viz = rospy.Timer(rospy.Duration(0.05), self.viz_nmpc_pred_callback)
 
         # - Estimator
         self.k_throttle = EP.k_throttle_init
@@ -178,7 +178,8 @@ class ControllerNode:
         mul_full_state_pts = MultiTrajFullStatePt()
         for i in range(self.nmpc_ctl.solver.N):
             x = self.nmpc_ctl.solver.get(i, "x")
-            full_state_pt = self.ref_pub.x_2_full_state_pt(x)
+            u = self.nmpc_ctl.solver.get(i, "u") if i != self.nmpc_ctl.solver.N - 1 else np.zeros(4)
+            full_state_pt = self.ref_pub.x_u_2_traj_full_pt(x, u)
             mul_full_state_pts.traj_pts.append(full_state_pt)
 
         mul_full_state_pts.header.stamp = rospy.Time.now()

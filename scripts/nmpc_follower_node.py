@@ -39,13 +39,8 @@ class ControllerNode:
 
         self.namespace = rospy.get_namespace().rstrip("/")
 
-        # Action -> reference
-        self.pt_pub_server = actionlib.SimpleActionServer(
-            f"{self.node_name}/pt_pub_action_server",
-            TrackTrajAction,
-            self.pt_pub_callback,
-            auto_start=False,
-        )
+        # Formation
+        self.formation_ref = Point(x=1, y=1, z=0.5)
 
         self.ref_pub = NMPCRefPublisher()
 
@@ -54,6 +49,7 @@ class ControllerNode:
         self.px4_odom = None
         rospy.Subscriber(f"mavros/state", State, callback=self.sub_state_callback)
         rospy.Subscriber(f"mavros/local_position/odom", Odometry, self.sub_odom_callback)
+        rospy.Subscriber(f"/fhnp/traj_tracker/pred", MultiTrajFullStatePt, self.sub_pred_callback)
 
         # Wait for Flight Controller connection
         rospy.loginfo(f"{self.namespace}: Waiting for the Flight Controller (eg. PX4) connection...")
@@ -63,7 +59,7 @@ class ControllerNode:
 
         # Timer
         # - Controller
-        self.nmpc_ctl = NMPCBodyRateController()
+        self.nmpc_ctl = NMPCBodyRateController(is_build_acados=False)
         self.nmpc_x_ref = np.zeros([CP.N_node + 1, CP.n_states])
         self.nmpc_u_ref = np.zeros([CP.N_node, CP.n_controls])
         while True:
@@ -73,7 +69,7 @@ class ControllerNode:
             time.sleep(0.2)
 
         self.tmr_control = rospy.Timer(rospy.Duration(CP.ts_nmpc), self.nmpc_callback)
-        # self.tmr_pred_viz = rospy.Timer(rospy.Duration(0.05), self.viz_nmpc_pred_callback)
+        self.tmr_pred_viz = rospy.Timer(rospy.Duration(0.05), self.viz_nmpc_pred_callback)
 
         # - Estimator
         self.k_throttle = EP.k_throttle_init
@@ -86,72 +82,19 @@ class ControllerNode:
         self.pub_viz_pred = rospy.Publisher(f"{self.node_name}/viz_pred", PoseArray, queue_size=10)
         self.pub_pred = rospy.Publisher(f"{self.node_name}/pred", MultiTrajFullStatePt, queue_size=10)
 
-        # start action server after all the initialization is done
-        self.pt_pub_server.start()
-        rospy.loginfo(f"{self.namespace}: Action Server started: {self.node_name}/pt_pub_action_server")
+    def sub_pred_callback(self, msg: MultiTrajFullStatePt):
+        # make traj target
 
-    def pt_pub_callback(self, goal: TrackTrajGoal):
-        """handle 3 task:
-        1. receive a trajectory
-        2. pub the trajectory reference points to the controller. give back the tracking error
-        3. stop and restart the hover throttle estimation
+        for i in range(len(msg.traj_pts)):
+            traj_full_state_pt = msg.traj_pts[i]
+            x, u = self.ref_pub.traj_full_pt_2_x_u(traj_full_state_pt)
+            x[0] += self.formation_ref.x
+            x[1] += self.formation_ref.y
+            x[2] += self.formation_ref.z
 
-        :param goal:
-        :return:
-        """
-        rospy.loginfo(f"{self.namespace}: Receive a trajectory. Start tracking trajectory...")
-
-        self.tmr_hv_throttle_est.shutdown()  # stop hover throttle estimation
-
-        self.ref_pub.reset(goal.traj_coeff, rospy.Time.now())
-
-        pos_rmse = 0
-        yaw_rmse = 0
-
-        r = rospy.Rate(1 / CP.ts_nmpc)
-        while self.ref_pub.is_activated:
-            # get reference
-            # note that the pt_pub is asynchronous with controller, that is to say,
-            # pt_pub doesn't wait for the controller to finish the previous step before publishing the next reference.
-            self.nmpc_x_ref, self.nmpc_u_ref = self.ref_pub.get_nmpc_pts(rospy.Time.now())
-
-            # check for preempt. Action related
-            if self.pt_pub_server.is_preempt_requested():
-                rospy.loginfo(f"{self.namespace}: Trajectory tracking preempted.")
-                self.pt_pub_server.set_preempted()
-                return  # exit the callback and step into the next callback to handle new goal
-
-            # get error
-            pos_err_now, yaw_err_now, pos_rmse, yaw_rmse = self.ref_pub.cum_error(self.px4_odom)
-
-            # publish feedback
-            feedback = TrackTrajFeedback()
-            feedback.percent_complete = self.ref_pub.t_now / self.ref_pub.t_all
-            feedback.pos_error = pos_err_now
-            feedback.yaw_error = yaw_err_now
-            rospy.loginfo_throttle(
-                1, f"{self.namespace}: Trajectory tracking percent complete: {100 * feedback.percent_complete:.2f}%"
-            )
-            self.pt_pub_server.publish_feedback(feedback)
-
-            r.sleep()
-
-        rospy.loginfo(f"{self.namespace}: Trajectory tracking finished.")
-
-        rospy.loginfo(
-            f"{self.namespace}: \n"
-            f"\n================================================\n"
-            f"Positional error (RMSE): {pos_rmse:.6f} [m]\n"
-            f"heading error (RMSE): {yaw_rmse:.6f} [deg]\n"
-            f"================================================\n"
-        )
-
-        time.sleep(3)  # TODO: add safe check. only start next tracking when the qd reach the starting point
-
-        # restart hover throttle estimation
-        self.tmr_hv_throttle_est = rospy.Timer(rospy.Duration(EP.ts_est), self.hover_throttle_callback)
-
-        self.pt_pub_server.set_succeeded(TrackTrajResult(pos_rmse, yaw_rmse))
+            self.nmpc_x_ref[i] = x
+            if i != (len(msg.traj_pts) - 1):
+                self.nmpc_u_ref[i] = u
 
     def nmpc_callback(self, timer: rospy.timer.TimerEvent):
         """NMPC controller callback
@@ -178,7 +121,8 @@ class ControllerNode:
         mul_full_state_pts = MultiTrajFullStatePt()
         for i in range(self.nmpc_ctl.solver.N):
             x = self.nmpc_ctl.solver.get(i, "x")
-            full_state_pt = self.ref_pub.x_2_full_state_pt(x)
+            u = self.nmpc_ctl.solver.get(i, "u") if i != self.nmpc_ctl.solver.N - 1 else np.zeros(4)
+            full_state_pt = self.ref_pub.x_u_2_traj_full_pt(x, u)
             mul_full_state_pts.traj_pts.append(full_state_pt)
 
         mul_full_state_pts.header.stamp = rospy.Time.now()
