@@ -142,6 +142,8 @@ class ControllerNode:
             f"================================================\n"
         )
 
+        time.sleep(3)  # TODO: add safe check. only start next tracking when the qd reach the starting point
+
         # restart hover throttle estimation
         self.tmr_hv_throttle_est = rospy.Timer(rospy.Duration(EP.ts_est), self.hover_throttle_callback)
 
@@ -165,7 +167,7 @@ class ControllerNode:
         self.pub_attitude.publish(self.body_rate_cmd)
 
     def viz_nmpc_pred_callback(self, timer: rospy.timer.TimerEvent):
-        flag = "ref"  # ref or pred
+        flag = "pred"  # ref or pred
         viz_pred = PoseArray()
         for i in range(self.nmpc_ctl.solver.N):
             if flag == "ref":
