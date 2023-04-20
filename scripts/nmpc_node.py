@@ -183,8 +183,8 @@ class ControllerNode:
             pose = Pose(p, q)
 
             viz_pred.poses.append(pose)
-            viz_pred.header.stamp = rospy.Time.now()
-            viz_pred.header.frame_id = "map"
+        viz_pred.header.stamp = rospy.Time.now()
+        viz_pred.header.frame_id = "map"
         self.pub_viz_pred.publish(viz_pred)
 
     def hover_throttle_callback(self, timer: rospy.timer.TimerEvent):
