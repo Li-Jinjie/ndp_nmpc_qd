@@ -35,7 +35,12 @@ from params import nmpc_params as CP, estimator_params as EP  # TODO: where is t
 
 class ControllerNode:
     def __init__(
-        self, has_traj_server: bool = True, has_pred_viz: bool = True, is_build_acados=True, has_pred_pub: bool = True
+        self,
+        has_traj_server: bool = True,
+        has_pred_viz: bool = True,
+        pred_viz_type: str = "pred",
+        is_build_acados: bool = True,
+        has_pred_pub: bool = True,
     ) -> None:
         self.node_name = "traj_tracker"
         rospy.init_node(self.node_name, anonymous=False)
@@ -43,6 +48,7 @@ class ControllerNode:
 
         self.has_traj_server = has_traj_server
         self.has_pred_viz = has_pred_viz
+        self.pred_viz_type = pred_viz_type
         self.is_build_acados = is_build_acados
         self.has_pred_pub = has_pred_pub
 
@@ -210,13 +216,12 @@ class ControllerNode:
         # -----------------------------------------------
 
     def viz_nmpc_pred_callback(self, timer: rospy.timer.TimerEvent):
-        flag = "pred"  # ref or pred
         viz_pred = PoseArray()
         for i in range(self.nmpc_ctl.solver.N):
-            if flag == "ref":
-                x = self.nmpc_x_ref[i]
-            else:
+            if self.pred_viz_type == "pred":
                 x = self.nmpc_ctl.solver.get(i, "x")
+            else:
+                x = self.nmpc_x_ref[i]
 
             p = Point(x=x[0], y=x[1], z=x[2])
             q = Quaternion(w=x[6], x=x[7], y=x[8], z=x[9])  # qw, qx, qy, qz
