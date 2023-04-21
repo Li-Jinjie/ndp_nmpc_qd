@@ -22,8 +22,9 @@ from typing import List, Tuple
 
 from mavros_msgs.msg import AttitudeTarget, State
 from nav_msgs.msg import Odometry
+from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Point, Quaternion, Pose, PoseArray, TransformStamped
-from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback
+from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback, PredXU
 
 from pt_pub import NMPCRefPublisher
 from nmpc import NMPCBodyRateController
@@ -34,7 +35,7 @@ from params import nmpc_params as CP, estimator_params as EP  # TODO: where is t
 
 class ControllerNode:
     def __init__(
-        self, has_traj_server: bool = True, has_pred_viz: bool = True, is_build_acados=True, has_pred_pub: bool = False
+        self, has_traj_server: bool = True, has_pred_viz: bool = True, is_build_acados=True, has_pred_pub: bool = True
     ) -> None:
         self.node_name = "traj_tracker"
         rospy.init_node(self.node_name, anonymous=False)
@@ -43,6 +44,7 @@ class ControllerNode:
         self.has_traj_server = has_traj_server
         self.has_pred_viz = has_pred_viz
         self.is_build_acados = is_build_acados
+        self.has_pred_pub = has_pred_pub
 
         # Action -> reference
         if self.has_traj_server:
@@ -90,11 +92,34 @@ class ControllerNode:
         # Pub
         self.body_rate_cmd = AttitudeTarget()
         self.pub_attitude = rospy.Publisher(f"mavros/setpoint_raw/attitude", AttitudeTarget, queue_size=10)
-        self.pub_viz_pred = rospy.Publisher(f"{self.node_name}/viz_pred", PoseArray, queue_size=10)
+        if self.has_pred_viz:
+            self.pub_viz_pred = rospy.Publisher(f"{self.node_name}/viz_pred", PoseArray, queue_size=10)
+        if self.has_pred_pub:
+            self.pub_pred = rospy.Publisher(f"{self.node_name}/pred", PredXU, queue_size=10)
 
         # start action server after all the initialization is done
-        self.pt_pub_server.start()
-        rospy.loginfo(f"{self.namespace}: Action Server started: {self.node_name}/pt_pub_action_server")
+        if self.has_traj_server:
+            self.pt_pub_server.start()
+            rospy.loginfo(f"{self.namespace}: Action Server started: {self.node_name}/pt_pub_action_server")
+
+    def do_pub_pred(self):
+        # for formation
+        mul_x_u = PredXU()
+        for i in range(self.nmpc_ctl.solver.N):
+            x = self.nmpc_ctl.solver.get(i, "x")
+            x_ros = Float64MultiArray()
+            x_ros.data = x.astype(np.float64).tolist()
+            mul_x_u.x.append(x_ros)
+
+            if i != self.nmpc_ctl.solver.N - 1:
+                u = self.nmpc_ctl.solver.get(i, "u")
+                u_ros = Float64MultiArray()
+                u_ros.data = u.astype(np.float64).tolist()
+                mul_x_u.u.append(u_ros)
+
+        mul_x_u.header.stamp = rospy.Time.now()
+        mul_x_u.header.frame_id = "map"
+        self.pub_pred.publish(mul_x_u)
 
     def pt_pub_callback(self, goal: TrackTrajGoal):
         """handle 3 task:
@@ -155,10 +180,10 @@ class ControllerNode:
             f"================================================\n"
         )
 
-        time.sleep(3)  # TODO: add safe check. only start next tracking when the qd reach the starting point
-
         # restart hover throttle estimation
         self.tmr_hv_throttle_est = rospy.Timer(rospy.Duration(EP.ts_est), self.hover_throttle_callback)
+
+        time.sleep(3)  # TODO: add safe check. only start next tracking when the qd reach the starting point
 
         self.pt_pub_server.set_succeeded(TrackTrajResult(pos_rmse, yaw_rmse))
 
@@ -178,6 +203,11 @@ class ControllerNode:
         u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref)
         self.body_rate_cmd = self.nmpc_u_2_att_tgt(u0[0], u0[1], u0[2], u0[3])
         self.pub_attitude.publish(self.body_rate_cmd)
+
+        # ------------ for formation control ------------
+        if self.has_pred_pub:
+            self.do_pub_pred()
+        # -----------------------------------------------
 
     def viz_nmpc_pred_callback(self, timer: rospy.timer.TimerEvent):
         flag = "pred"  # ref or pred

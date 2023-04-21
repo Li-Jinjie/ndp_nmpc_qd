@@ -21,8 +21,8 @@ w_min = -1
 c_max = QD.c_max
 c_min = 0
 
-v_max = 2  # TODO: make greater
-v_min = -2
+v_max = 20  # TODO: set small in real flight
+v_min = -20
 
 # params for the cost function
 Qp_xy = 300  # 0
