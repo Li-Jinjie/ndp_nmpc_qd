@@ -33,19 +33,25 @@ from params import nmpc_params as CP, estimator_params as EP  # TODO: where is t
 
 
 class ControllerNode:
-    def __init__(self) -> None:
+    def __init__(
+        self, has_traj_server: bool = True, has_pred_viz: bool = True, is_build_acados=True, has_pred_pub: bool = False
+    ) -> None:
         self.node_name = "traj_tracker"
         rospy.init_node(self.node_name, anonymous=False)
-
         self.namespace = rospy.get_namespace().rstrip("/")
 
+        self.has_traj_server = has_traj_server
+        self.has_pred_viz = has_pred_viz
+        self.is_build_acados = is_build_acados
+
         # Action -> reference
-        self.pt_pub_server = actionlib.SimpleActionServer(
-            f"{self.node_name}/pt_pub_action_server",
-            TrackTrajAction,
-            self.pt_pub_callback,
-            auto_start=False,
-        )
+        if self.has_traj_server:
+            self.pt_pub_server = actionlib.SimpleActionServer(
+                f"{self.node_name}/pt_pub_action_server",
+                TrackTrajAction,
+                self.pt_pub_callback,
+                auto_start=False,
+            )
 
         self.ref_pub = NMPCRefPublisher()
 
@@ -63,7 +69,7 @@ class ControllerNode:
 
         # Timer
         # - Controller
-        self.nmpc_ctl = NMPCBodyRateController()
+        self.nmpc_ctl = NMPCBodyRateController(self.is_build_acados)
         self.nmpc_x_ref = np.zeros([CP.N_node + 1, CP.n_states])
         self.nmpc_u_ref = np.zeros([CP.N_node, CP.n_controls])
         while True:
@@ -73,7 +79,8 @@ class ControllerNode:
             time.sleep(0.2)
 
         self.tmr_control = rospy.Timer(rospy.Duration(CP.ts_nmpc), self.nmpc_callback)
-        self.tmr_pred_viz = rospy.Timer(rospy.Duration(0.05), self.viz_nmpc_pred_callback)
+        if self.has_pred_viz:
+            self.tmr_pred_viz = rospy.Timer(rospy.Duration(0.05), self.viz_nmpc_pred_callback)
 
         # - Estimator
         self.k_throttle = EP.k_throttle_init
@@ -98,16 +105,19 @@ class ControllerNode:
         :param goal:
         :return:
         """
-        rospy.loginfo(f"{self.namespace}: Receive a trajectory. Start tracking trajectory...")
+        rospy.loginfo(f"{self.namespace}: Receive a trajectory.")
 
         self.tmr_hv_throttle_est.shutdown()  # stop hover throttle estimation
 
-        self.ref_pub.reset(goal.traj_coeff, rospy.Time.now())
+        self.ref_pub.reset(goal.traj_coeff, rospy.Time.now())  # 1. reset the pt_pub 2. construct first nmpc ref
+        # calculate first nmpc output. this should be done before tracking since the first SQP solving is slow.
+        nmpc_x0 = self.ref_pub.odom_2_nmpc_x(self.px4_odom)
+        u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref)
 
         pos_rmse = 0
         yaw_rmse = 0
-
         r = rospy.Rate(1 / CP.ts_nmpc)
+        rospy.loginfo(f"{self.namespace}: Start tracking trajectory...")
         while self.ref_pub.is_activated:
             # get reference
             # note that the pt_pub is asynchronous with controller, that is to say,
