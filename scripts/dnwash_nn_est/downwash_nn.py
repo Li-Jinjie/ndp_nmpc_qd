@@ -26,8 +26,6 @@ class Net(nn.Module):
 
 class DownwashNN:
     def __init__(self):
-        print(f"current path of python: {os.getcwd()}")
-
         self.device = torch.device("cuda")
         self.nn_model = Net()
         self.nn_model.load_state_dict(
@@ -45,7 +43,4 @@ class DownwashNN:
         output = self.nn_model(input_cuda)
 
         output_np = output.cpu().detach().numpy()
-        fx = output_np[:, 0]
-        fy = output_np[:, 1]
-        fz = output_np[:, 2]
-        return fx, fy, fz
+        return output_np

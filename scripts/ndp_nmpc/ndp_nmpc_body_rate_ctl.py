@@ -24,7 +24,7 @@ class NDPNMPCBodyRateController(object):
         nx = opt_model.x.size()[0]
         nu = opt_model.u.size()[0]
         ny = nx + nu
-        n_params = len(opt_model.p)
+        n_params = opt_model.p.size()[0]
 
         # get file path for acados
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -42,7 +42,7 @@ class NDPNMPCBodyRateController(object):
 
         # initialize parameters
         ocp.dims.np = n_params
-        ocp.parameter_values = np.zeros(n_params)  # TODO: discussion
+        ocp.parameter_values = np.zeros(n_params)
 
         # cost function
         Q = np.diag([CP.Qp_xy, CP.Qp_xy, CP.Qp_z, CP.Qv_xy, CP.Qv_xy, CP.Qv_z, CP.Qq, CP.Qq, CP.Qq, CP.Qq_z])
@@ -86,11 +86,14 @@ class NDPNMPCBodyRateController(object):
         json_file_path = os.path.join("./" + opt_model.name + "_acados_ocp.json")
         self.solver = AcadosOcpSolver(ocp, json_file=json_file_path, build=is_build_acados)
 
-    def update(self, x0, xr, ur):
+    def update(self, x0, xr, ur, p):
         # get x and u, set reference
         for i in range(self.solver.N):
             yr = np.concatenate((xr[i, :], ur[i, :]))
             self.solver.set(i, "yref", yr)
+
+            self.solver.set(i, "p", p[i, :])
+
         self.solver.set(self.solver.N, "yref", xr[self.solver.N, :])  # final state of x, no u
 
         # self.solver.set(i, "p", fx, fy, fz)
@@ -127,13 +130,19 @@ class BodyRateModel(object):
         c = ca.SX.sym("c")
         controls = ca.vertcat(wx, wy, wz, c)
 
+        # outer forces
+        fx = ca.SX.sym("fx")
+        fy = ca.SX.sym("fy")
+        fz = ca.SX.sym("fz")
+        disturb_force = ca.vertcat(fx, fy, fz)
+
         ds = ca.vertcat(
             vx,
             vy,
             vz,
-            2 * (qx * qz + qw * qy) * c,
-            2 * (qy * qz - qw * qx) * c,
-            (1 - 2 * qx**2 - 2 * qy**2) * c - CP.gravity,
+            2 * (qx * qz + qw * qy) * c + fx / CP.mass,
+            2 * (qy * qz - qw * qx) * c + fy / CP.mass,
+            (1 - 2 * qx**2 - 2 * qy**2) * c - CP.gravity + fz / CP.mass,
             (-wx * qx - wy * qy - wz * qz) * 0.5,
             (wx * qw + wz * qy - wy * qz) * 0.5,
             (wy * qw - wz * qx + wx * qz) * 0.5,
@@ -154,7 +163,7 @@ class BodyRateModel(object):
         model.x = states
         model.xdot = x_dot
         model.u = controls
-        model.p = []
+        model.p = disturb_force
 
         # constraint
         constraint = ca.types.SimpleNamespace()
