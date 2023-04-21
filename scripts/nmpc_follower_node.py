@@ -30,7 +30,7 @@ from hv_throttle_est import AlphaFilter
 
 
 class FollowerNode(ControllerNode):
-    def __init__(self) -> None:
+    def __init__(self, is_print_error=False) -> None:
         super().__init__(
             has_traj_server=False, has_pred_viz=True, pred_viz_type="pred", is_build_acados=False, has_pred_pub=True
         )
@@ -43,6 +43,13 @@ class FollowerNode(ControllerNode):
         self.lpf_form_ref_y = AlphaFilter(alpha=alpha, y0=self.formation_ref.y)
         self.lpf_form_ref_z = AlphaFilter(alpha=alpha, y0=self.formation_ref.z)
         rospy.Subscriber(f"{self.node_name}/formation_ref", Point, self.sub_formation_ref_callback)
+
+        self.is_print_error = is_print_error
+        if self.is_print_error:
+            self.num_pt = 0
+            self.form_x_error_2 = 0
+            self.form_y_error_2 = 0
+            self.form_z_error_2 = 0
 
     def sub_formation_ref_callback(self, msg: Point):
         self.formation_ref.x = self.lpf_form_ref_x.update(msg.x)
@@ -67,10 +74,30 @@ class FollowerNode(ControllerNode):
                 u = np.array(u_list[i].data, dtype=np.float64)
                 self.nmpc_u_ref[i] = u
 
+        if self.is_print_error:
+            self.calculate_form_error()
+
+    def calculate_form_error(self):
+        self.num_pt += 1
+        ego = self.px4_odom.pose.pose.position
+        self.form_x_error_2 += (ego.x - self.nmpc_x_ref[0, 0]) ** 2
+        self.form_y_error_2 += (ego.y - self.nmpc_x_ref[0, 1]) ** 2
+        self.form_z_error_2 += (ego.z - self.nmpc_x_ref[0, 2]) ** 2
+
+        rospy.loginfo_throttle(
+            0.1,
+            f"{self.namespace}\n"
+            f"formation_x_error [RMSE]: {np.sqrt(self.form_x_error_2 / self.num_pt)}, \n"
+            f"formation_y_error [RMSE]: {np.sqrt(self.form_y_error_2 / self.num_pt)}, \n"
+            f"formation_z_error [RMSE]: {np.sqrt(self.form_z_error_2 / self.num_pt)}, \n"
+            f"formation_error [RMSE]: "
+            f"{np.sqrt((self.form_x_error_2 + self.form_y_error_2 + self.form_z_error_2) / self.num_pt)}",
+        )
+
 
 if __name__ == "__main__":
     try:
-        node = FollowerNode()
+        node = FollowerNode(is_print_error=False)
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
