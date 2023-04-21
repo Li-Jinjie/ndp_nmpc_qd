@@ -1,0 +1,16 @@
+<launch>
+<!--    pure nmpc controller-->
+    <group ns="fhnp">
+        <node pkg="oop_qd_onbd" type="nmpc_leader_node.py" name="nmpc_node" output="screen" respawn="true"/>
+<!--        mavros_node-->
+    </group>
+    <group ns="xiao_feng">
+        <node pkg="oop_qd_onbd" type="nmpc_follower_node.py" name="nmpc_node" output="screen" respawn="true"/>
+<!--        mavros_node-->
+    </group>
+    <group ns="smile_boy">
+        <node pkg="oop_qd_onbd" type="nmpc_follower_node.py" name="nmpc_node" output="screen" respawn="true"/>
+<!--        mavros_node-->
+    </group>
+
+</launch>
