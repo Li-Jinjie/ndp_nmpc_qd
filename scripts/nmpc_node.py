@@ -36,6 +36,7 @@ from params import nmpc_params as CP, estimator_params as EP  # TODO: where is t
 class ControllerNode:
     def __init__(
         self,
+        NMPC_CTL=NMPCBodyRateController,
         has_traj_server: bool = True,
         has_pred_viz: bool = True,
         pred_viz_type: str = "pred",
@@ -77,7 +78,7 @@ class ControllerNode:
 
         # Timer
         # - Controller
-        self.nmpc_ctl = NMPCBodyRateController(self.is_build_acados)
+        self.nmpc_ctl = NMPC_CTL(self.is_build_acados)
         self.nmpc_x_ref = np.zeros([CP.N_node + 1, CP.n_states])
         self.nmpc_u_ref = np.zeros([CP.N_node, CP.n_controls])
         while True:
