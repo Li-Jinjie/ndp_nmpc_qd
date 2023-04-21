@@ -26,6 +26,7 @@ from geometry_msgs.msg import Point, Quaternion, Pose, PoseArray, TransformStamp
 from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback, PredXU
 
 from nmpc_node import ControllerNode
+from hv_throttle_est import AlphaFilter
 
 
 class FollowerNode(ControllerNode):
@@ -34,12 +35,19 @@ class FollowerNode(ControllerNode):
             has_traj_server=False, has_pred_viz=True, pred_viz_type="pred", is_build_acados=False, has_pred_pub=True
         )
 
-        self.formation_ref = Point(x=1, y=1, z=0.5)
         rospy.Subscriber(f"/fhnp/traj_tracker/pred", PredXU, self.sub_pred_callback)
+
+        self.formation_ref = Point(x=1, y=1, z=0.5)
+        alpha = 0.8
+        self.lpf_form_ref_x = AlphaFilter(alpha=alpha, y0=self.formation_ref.x)
+        self.lpf_form_ref_y = AlphaFilter(alpha=alpha, y0=self.formation_ref.y)
+        self.lpf_form_ref_z = AlphaFilter(alpha=alpha, y0=self.formation_ref.z)
         rospy.Subscriber(f"{self.node_name}/formation_ref", Point, self.sub_formation_ref_callback)
 
     def sub_formation_ref_callback(self, msg: Point):
-        self.formation_ref = msg
+        self.formation_ref.x = self.lpf_form_ref_x.update(msg.x)
+        self.formation_ref.y = self.lpf_form_ref_y.update(msg.y)
+        self.formation_ref.z = self.lpf_form_ref_z.update(msg.z)
 
     def sub_pred_callback(self, msg: PredXU):
         # make traj target
