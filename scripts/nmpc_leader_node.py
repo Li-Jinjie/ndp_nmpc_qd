@@ -40,7 +40,7 @@ class LeaderNode(ControllerNode):
         if np.abs(self.px4_odom.pose.pose.position.x - 1) > 2:
             self.formation_ref = Point(x=0.0, y=0.0, z=0.5)
         else:
-            self.formation_ref = Point(x=0.0, y=1.0, z=1.0)
+            self.formation_ref = Point(x=0.0, y=1.0, z=0.0)
 
         self.pub_formation_ref.publish(self.formation_ref)
 
