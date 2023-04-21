@@ -13,17 +13,11 @@ import os
 current_path = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, current_path)
 
-import time
 import numpy as np
 import rospy
-import tf2_ros
-import actionlib
-from typing import List, Tuple
 
-from mavros_msgs.msg import AttitudeTarget, State
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Point, Quaternion, Pose, PoseArray, TransformStamped
-from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback, PredXU
+from geometry_msgs.msg import Point
+from oop_qd_onbd.msg import PredXU
 
 from nmpc_node import ControllerNode
 from hv_throttle_est import AlphaFilter
