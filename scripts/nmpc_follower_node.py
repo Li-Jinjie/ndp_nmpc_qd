@@ -30,7 +30,9 @@ from nmpc_node import ControllerNode
 
 class FollowerNode(ControllerNode):
     def __init__(self) -> None:
-        super().__init__(has_traj_server=False, has_pred_viz=True, is_build_acados=False, has_pred_pub=True)
+        super().__init__(
+            has_traj_server=False, has_pred_viz=True, pred_viz_type="pred", is_build_acados=False, has_pred_pub=True
+        )
 
         # Formation
         self.formation_ref = Point(x=1, y=1, z=0.5)

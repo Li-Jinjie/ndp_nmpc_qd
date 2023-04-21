@@ -111,13 +111,13 @@ class ControllerNode:
     def do_pub_pred(self):
         # for formation
         mul_x_u = PredXU()
-        for i in range(self.nmpc_ctl.solver.N):
+        for i in range(self.nmpc_ctl.solver.N + 1):
             x = self.nmpc_ctl.solver.get(i, "x")
             x_ros = Float64MultiArray()
             x_ros.data = x.astype(np.float64).tolist()
             mul_x_u.x.append(x_ros)
 
-            if i != self.nmpc_ctl.solver.N - 1:
+            if i != self.nmpc_ctl.solver.N:
                 u = self.nmpc_ctl.solver.get(i, "u")
                 u_ros = Float64MultiArray()
                 u_ros.data = u.astype(np.float64).tolist()
