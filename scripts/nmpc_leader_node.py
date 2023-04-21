@@ -32,6 +32,13 @@ class LeaderNode(ControllerNode):
     def __init__(self):
         super().__init__(has_traj_server=True, has_pred_viz=True, is_build_acados=False, has_pred_pub=True)
 
+        self.formation_ref = Point(x=2, y=2, z=0.5)
+        self.pub_formation_ref = rospy.Publisher(f"/xiao_feng/{self.node_name}/formation_ref", Point, queue_size=1)
+        self.tmr_formation_ref = rospy.Timer(rospy.Duration(1 / 20), self.pub_formation_ref_callback)
+
+    def pub_formation_ref_callback(self, timer: rospy.timer.TimerEvent):
+        self.pub_formation_ref.publish(self.formation_ref)
+
 
 if __name__ == "__main__":
     try:

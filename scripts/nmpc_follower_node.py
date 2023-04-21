@@ -34,11 +34,12 @@ class FollowerNode(ControllerNode):
             has_traj_server=False, has_pred_viz=True, pred_viz_type="pred", is_build_acados=False, has_pred_pub=True
         )
 
-        # Formation
         self.formation_ref = Point(x=1, y=1, z=0.5)
-
-        # Sub
         rospy.Subscriber(f"/fhnp/traj_tracker/pred", PredXU, self.sub_pred_callback)
+        rospy.Subscriber(f"{self.node_name}/formation_ref", Point, self.sub_formation_ref_callback)
+
+    def sub_formation_ref_callback(self, msg: Point):
+        self.formation_ref = msg
 
     def sub_pred_callback(self, msg: PredXU):
         # make traj target
