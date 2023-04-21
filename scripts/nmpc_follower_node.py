@@ -32,10 +32,8 @@ class FollowerNode(ControllerNode):
         rospy.Subscriber(f"/fhnp/traj_tracker/pred", PredXU, self.sub_pred_callback)
 
         self.formation_ref = Point(x=1, y=1, z=0.5)
-        alpha = 0.8
-        self.lpf_form_ref_x = AlphaFilter(alpha=alpha, y0=self.formation_ref.x)
-        self.lpf_form_ref_y = AlphaFilter(alpha=alpha, y0=self.formation_ref.y)
-        self.lpf_form_ref_z = AlphaFilter(alpha=alpha, y0=self.formation_ref.z)
+        self.lpf_ref_alpha = 0.8
+        self.lpf_form_ref_x, self.lpf_form_ref_y, self.lpf_form_ref_z = None, None, None
         rospy.Subscriber(f"{self.node_name}/formation_ref", Point, self.sub_formation_ref_callback)
 
         self.is_print_error = is_print_error
@@ -46,6 +44,16 @@ class FollowerNode(ControllerNode):
             self.form_z_error_2 = 0
 
     def sub_formation_ref_callback(self, msg: Point):
+
+        if self.lpf_form_ref_x is None:
+            self.lpf_form_ref_x = AlphaFilter(alpha=self.lpf_ref_alpha, y0=msg.x)
+
+        if self.lpf_form_ref_y is None:
+            self.lpf_form_ref_y = AlphaFilter(alpha=self.lpf_ref_alpha, y0=msg.y)
+
+        if self.lpf_form_ref_z is None:
+            self.lpf_form_ref_z = AlphaFilter(alpha=self.lpf_ref_alpha, y0=msg.z)
+
         self.formation_ref.x = self.lpf_form_ref_x.update(msg.x)
         self.formation_ref.y = self.lpf_form_ref_y.update(msg.y)
         self.formation_ref.z = self.lpf_form_ref_z.update(msg.z)
