@@ -37,7 +37,6 @@ class NDPLeaderNode(ControllerNode):
         )
 
         # nn downwash observer
-        self.disturb_force = np.zeros([CP.N_node + 1, 3])
         self.downwash_observer = DownwashNN()
         self.sub_pred = rospy.Subscriber(f"/xiao_feng/traj_tracker/pred", PredXU, self.sub_xf_pred_callback)
 
@@ -76,30 +75,6 @@ class NDPLeaderNode(ControllerNode):
             self.disturb_force = self.downwash_observer.update(nmpc_x_other, self.nmpc_x_ref)
         else:
             self.disturb_force = np.zeros([len(x_list), 3])
-
-    def nmpc_callback(self, timer: rospy.timer.TimerEvent):
-        """NMPC controller callback
-        only do one thing: track self.nmpc_x_ref and self.nmpc_u_ref
-        """
-        # ---- check if the control is too slow ----
-        if timer.last_duration is not None and CP.ts_nmpc < timer.last_duration:
-            rospy.logwarn(
-                f"{self.namespace}: Control is too slow!"
-                f"ts_ctl: {CP.ts_nmpc * 1000:.3f} ms < ts_one_round: {timer.last_duration * 1000:.3f} ms"
-            )
-        # ------------------------------------------
-
-        print(1)
-
-        nmpc_x0 = self.ref_pub.odom_2_nmpc_x(self.px4_odom)
-        u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref, self.disturb_force)
-        self.body_rate_cmd = self.nmpc_u_2_att_tgt(u0[0], u0[1], u0[2], u0[3])
-        self.pub_attitude.publish(self.body_rate_cmd)
-
-        # ------------ for formation control ------------
-        if self.has_pred_pub:
-            self.do_pub_pred()
-        # -----------------------------------------------
 
 
 if __name__ == "__main__":

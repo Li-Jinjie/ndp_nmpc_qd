@@ -28,6 +28,7 @@ from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, Tra
 
 from pt_pub import NMPCRefPublisher
 from nmpc import NMPCBodyRateController
+from ndp_nmpc import NDPNMPCBodyRateController
 from hv_throttle_est import HoverThrottleEstimator
 
 from params import nmpc_params as CP, estimator_params as EP  # TODO: where is this CP should be?
@@ -46,6 +47,8 @@ class ControllerNode:
         self.node_name = "traj_tracker"
         rospy.init_node(self.node_name, anonymous=False)
         self.namespace = rospy.get_namespace().rstrip("/")
+
+        self.disturb_force = np.zeros([CP.N_node + 1, 3])  # only for NDP-NMPC. no use in pure NMPC
 
         self.has_traj_server = has_traj_server
         self.has_pred_viz = has_pred_viz
@@ -144,7 +147,7 @@ class ControllerNode:
         self.ref_pub.reset(goal.traj_coeff, rospy.Time.now())  # 1. reset the pt_pub 2. construct first nmpc ref
         # calculate first nmpc output. this should be done before tracking since the first SQP solving is slow.
         nmpc_x0 = self.ref_pub.odom_2_nmpc_x(self.px4_odom)
-        u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref)
+        u0 = self._nmpc_update(nmpc_x0)
 
         pos_rmse = 0
         yaw_rmse = 0
@@ -194,6 +197,15 @@ class ControllerNode:
 
         self.pt_pub_server.set_succeeded(TrackTrajResult(pos_rmse, yaw_rmse))
 
+    def _nmpc_update(self, nmpc_x0):
+        if isinstance(self.nmpc_ctl, NMPCBodyRateController):
+            u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref)
+        elif isinstance(self.nmpc_ctl, NDPNMPCBodyRateController):
+            u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref, self.disturb_force)
+        else:
+            raise ValueError("NMPC_CTL should be either NMPCBodyRateController or NDPNMPCBodyRateController")
+        return u0
+
     def nmpc_callback(self, timer: rospy.timer.TimerEvent):
         """NMPC controller callback
         only do one thing: track self.nmpc_x_ref and self.nmpc_u_ref
@@ -207,7 +219,7 @@ class ControllerNode:
         # ------------------------------------------
 
         nmpc_x0 = self.ref_pub.odom_2_nmpc_x(self.px4_odom)
-        u0 = self.nmpc_ctl.update(nmpc_x0, self.nmpc_x_ref, self.nmpc_u_ref)
+        u0 = self._nmpc_update(nmpc_x0)
         self.body_rate_cmd = self.nmpc_u_2_att_tgt(u0[0], u0[1], u0[2], u0[3])
         self.pub_attitude.publish(self.body_rate_cmd)
 
