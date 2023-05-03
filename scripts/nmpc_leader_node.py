@@ -25,9 +25,7 @@ from dnwash_nn_est import DownwashNN
 
 class LeaderNode(ControllerNode):
     def __init__(self):
-        super().__init__(
-            has_traj_server=True, has_pred_viz=True, pred_viz_type="ref", is_build_acados=False, has_pred_pub=True
-        )
+        super().__init__(has_traj_server=True, has_pred_viz=True, is_build_acados=False, has_pred_pub=True)
 
         # formation target
         self.xf_formation_ref = Point(x=0.0, y=1.0, z=1.0)

@@ -1,20 +1,24 @@
 <launch>
 <!--    pure nmpc controller-->
     <group ns="fhnp">
-        <node pkg="oop_qd_onbd" type="nmpc_node.py" name="nmpc_node" output="screen"/>
+        <node pkg="oop_qd_onbd" type="nmpc_leader_node.py" name="nmpc_node" output="screen"/>
 <!--        mavros_node-->
     </group>
     <group ns="xiao_feng">
-        <node pkg="oop_qd_onbd" type="nmpc_node.py" name="nmpc_node" output="screen"/>
+        <node pkg="oop_qd_onbd" type="nmpc_leader_node.py" name="nmpc_node" output="screen"/>
 <!--        mavros_node-->
     </group>
     <group ns="smile_boy">
-        <node pkg="oop_qd_onbd" type="nmpc_node.py" name="nmpc_node" output="screen"/>
+        <node pkg="oop_qd_onbd" type="nmpc_leader_node.py" name="nmpc_node" output="screen"/>
 <!--        mavros_node-->
     </group>
     <group ns="wan_yue">
-        <node pkg="oop_qd_onbd" type="nmpc_node.py" name="nmpc_node" output="screen"/>
+        <node pkg="oop_qd_onbd" type="nmpc_leader_node.py" name="nmpc_node" output="screen"/>
 <!--        mavros_node-->
     </group>
+
+    <include file="$(find dop_qd_sim)/launch/mul_qd_w_rviz.launch">
+        <arg name="config_file" value="four_qd_test_downwash_config.yaml" />
+    </include>
 
 </launch>

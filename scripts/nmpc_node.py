@@ -105,31 +105,31 @@ class ControllerNode:
         if self.has_pred_viz:
             self.pub_viz_pred = rospy.Publisher(f"{self.node_name}/viz_pred", PoseArray, queue_size=10)
         if self.has_pred_pub:
-            self.pub_pred = rospy.Publisher(f"{self.node_name}/pred", PredXU, queue_size=10)
+            self.pub_ref_x_u = rospy.Publisher(f"{self.node_name}/ref_x_u", PredXU, queue_size=10)
 
         # start action server after all the initialization is done
         if self.has_traj_server:
             self.pt_pub_server.start()
             rospy.loginfo(f"{self.namespace}: Action Server started: {self.node_name}/pt_pub_action_server")
 
-    def do_pub_pred(self):
+    def do_pub_ref(self):
         # for formation
         mul_x_u = PredXU()
         for i in range(self.nmpc_ctl.solver.N + 1):
-            x = self.nmpc_ctl.solver.get(i, "x")
+            x = self.nmpc_x_ref[i, :]
             x_ros = Float64MultiArray()
             x_ros.data = x.astype(np.float64).tolist()
             mul_x_u.x.append(x_ros)
 
             if i != self.nmpc_ctl.solver.N:
-                u = self.nmpc_ctl.solver.get(i, "u")
+                u = self.nmpc_u_ref[i, :]
                 u_ros = Float64MultiArray()
                 u_ros.data = u.astype(np.float64).tolist()
                 mul_x_u.u.append(u_ros)
 
         mul_x_u.header.stamp = rospy.Time.now()
         mul_x_u.header.frame_id = "map"
-        self.pub_pred.publish(mul_x_u)
+        self.pub_ref_x_u.publish(mul_x_u)
 
     def pt_pub_callback(self, goal: TrackTrajGoal):
         """handle 3 task:
@@ -225,7 +225,7 @@ class ControllerNode:
 
         # ------------ for formation control ------------
         if self.has_pred_pub:
-            self.do_pub_pred()
+            self.do_pub_ref()
         # -----------------------------------------------
 
     def viz_nmpc_pred_callback(self, timer: rospy.timer.TimerEvent):

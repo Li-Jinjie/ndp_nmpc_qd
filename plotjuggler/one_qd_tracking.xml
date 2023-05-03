@@ -1,82 +1,177 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <root>
- <tabbed_widget name="Main Window" parent="main_window">
-  <Tab tab_name="tab1" containers="1">
+ <tabbed_widget parent="main_window" name="Main Window">
+  <Tab containers="1" tab_name="tab1">
    <Container>
-    <DockSplitter sizes="1" count="1" orientation="-">
-     <DockSplitter sizes="0.332909;0.334182;0.332909" count="3" orientation="|">
-      <DockSplitter sizes="0.333063;0.333875;0.333063" count="3" orientation="-">
+    <DockSplitter orientation="-" sizes="1" count="1">
+     <DockSplitter orientation="|" sizes="0.332913;0.334174;0.332913" count="3">
+      <DockSplitter orientation="-" sizes="0.332968;0.334064;0.332968" count="3">
        <DockArea name="...">
-        <plot flip_y="false" flip_x="false" style="Lines" mode="TimeSeries">
-         <range right="626.171557" top="5.297197" bottom="-3.297103" left="0.000000"/>
+        <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+         <range right="182.322268" left="122.332338" top="11.719032" bottom="-9.719024"/>
          <limitY/>
-         <curve name="/fhnp/traj_tracker/viz_pred/poses.0/position/x" color="#1f77b4"/>
-         <curve name="/fhnp/mavros/local_position/odom/pose/pose/position/x" color="#ff7f0e"/>
+         <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/x.0/data.0"/>
+         <curve color="#d95319" name="/fhnp/mavros/local_position/odom/pose/pose/position/x"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot flip_y="false" flip_x="false" style="Lines" mode="TimeSeries">
-         <range right="626.171557" top="1.007705" bottom="-0.559802" left="0.000000"/>
+        <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+         <range right="182.322268" left="122.332338" top="7.691935" bottom="-5.171072"/>
          <limitY/>
-         <curve name="/fhnp/mavros/local_position/odom/twist/twist/linear/x" color="#f14cc1"/>
+         <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/x.0/data.3"/>
+         <curve color="#d95319" name="/fhnp/mavros/local_position/odom/twist/twist/linear/x"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot flip_y="false" flip_x="false" style="Lines" mode="TimeSeries">
-         <range right="626.171557" top="5.297197" bottom="-3.297103" left="0.000000"/>
+        <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+         <range right="182.322268" left="122.332338" top="3.601162" bottom="-3.684112"/>
          <limitY/>
-         <curve name="/smile_boy/traj_tracker/formation_ref/x" color="#f14cc1"/>
-         <curve name="/smile_boy/mavros/local_position/odom/pose/pose/position/x" color="#17becf"/>
-         <curve name="/fhnp/mavros/local_position/odom/pose/pose/position/x" color="#ff7f0e"/>
-        </plot>
-       </DockArea>
-      </DockSplitter>
-      <DockSplitter sizes="0.333063;0.333875;0.333063" count="3" orientation="-">
-       <DockArea name="...">
-        <plot flip_y="false" flip_x="false" style="Lines" mode="TimeSeries">
-         <range right="626.171557" top="2.293828" bottom="-0.293774" left="0.000000"/>
-         <limitY/>
-         <curve name="/fhnp/traj_tracker/viz_pred/poses.0/position/y" color="#d62728"/>
-         <curve name="/fhnp/mavros/local_position/odom/pose/pose/position/y" color="#f14cc1"/>
-        </plot>
-       </DockArea>
-       <DockArea name="...">
-        <plot flip_y="false" flip_x="false" style="Lines" mode="TimeSeries">
-         <range right="626.171557" top="0.427381" bottom="-0.609655" left="0.000000"/>
-         <limitY/>
-         <curve name="/fhnp/mavros/local_position/odom/twist/twist/linear/y" color="#9467bd"/>
-        </plot>
-       </DockArea>
-       <DockArea name="...">
-        <plot flip_y="false" flip_x="false" style="Lines" mode="TimeSeries">
-         <range right="1.000000" top="1.000000" bottom="0.000000" left="0.000000"/>
-         <limitY/>
+         <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/u.0/data.0"/>
+         <curve color="#d95319" name="/fhnp/mavros/local_position/odom/twist/twist/angular/x"/>
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter sizes="0.333063;0.333875;0.333063" count="3" orientation="-">
+      <DockSplitter orientation="-" sizes="0.332968;0.334064;0.332968" count="3">
        <DockArea name="...">
-        <plot flip_y="false" flip_x="false" style="Lines" mode="TimeSeries">
-         <range right="626.171557" top="1.228728" bottom="-0.237285" left="0.000000"/>
+        <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+         <range right="182.322268" left="122.332338" top="7.432980" bottom="-5.432985"/>
          <limitY/>
-         <curve name="/fhnp/traj_tracker/viz_pred/poses.0/position/z" color="#1ac938"/>
-         <curve name="/fhnp/mavros/local_position/odom/pose/pose/position/z" color="#9467bd"/>
+         <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/x.0/data.1"/>
+         <curve color="#d95319" name="/fhnp/mavros/local_position/odom/pose/pose/position/y"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot flip_y="false" flip_x="false" style="Lines" mode="TimeSeries">
-         <range right="626.171557" top="0.214750" bottom="-0.217606" left="0.000000"/>
+        <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+         <range right="182.322268" left="122.332338" top="5.649772" bottom="-9.028948"/>
          <limitY/>
-         <curve name="/fhnp/mavros/local_position/odom/twist/twist/linear/z" color="#17becf"/>
+         <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/x.0/data.4"/>
+         <curve color="#d95319" name="/fhnp/mavros/local_position/odom/twist/twist/linear/y"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot flip_y="false" flip_x="false" style="Lines" mode="TimeSeries">
-         <range right="1.000000" top="1.000000" bottom="0.000000" left="0.000000"/>
+        <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+         <range right="182.322268" left="122.332338" top="2.483013" bottom="-4.029797"/>
          <limitY/>
+         <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/u.0/data.1"/>
+         <curve color="#d95319" name="/fhnp/mavros/local_position/odom/twist/twist/angular/y"/>
         </plot>
        </DockArea>
       </DockSplitter>
+      <DockSplitter orientation="-" sizes="0.332968;0.334064;0.332968" count="3">
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+         <range right="182.322268" left="122.332338" top="8.318733" bottom="1.781780"/>
+         <limitY/>
+         <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/x.0/data.2"/>
+         <curve color="#d95319" name="/fhnp/mavros/local_position/odom/pose/pose/position/z"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+         <range right="182.322268" left="122.332338" top="2.307121" bottom="-1.532480"/>
+         <limitY/>
+         <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/x.0/data.5"/>
+         <curve color="#d95319" name="/fhnp/mavros/local_position/odom/twist/twist/linear/z"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+         <range right="182.322268" left="122.332338" top="0.548506" bottom="-0.404978"/>
+         <limitY/>
+         <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/u.0/data.2"/>
+         <curve color="#d95319" name="/fhnp/mavros/local_position/odom/twist/twist/angular/z"/>
+        </plot>
+       </DockArea>
+      </DockSplitter>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab containers="1" tab_name="tab2">
+   <Container>
+    <DockSplitter orientation="-" sizes="0.500631;0.499369" count="2">
+     <DockSplitter orientation="|" sizes="0.25;0.25;0.25;0.25" count="4">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+        <range right="182.322268" left="122.332338" top="-0.825950" bottom="-1.004245"/>
+        <limitY/>
+        <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/x.0/data.6">
+         <transform alias="/fhnp/traj_tracker/ref_x_u/x.0/data.6[Scale/Offset]" name="Scale/Offset">
+          <options value_offset="0" time_offset="0" value_scale="-1.0"/>
+         </transform>
+        </curve>
+        <curve color="#d95319" name="/fhnp/mavros/local_position/odom/pose/pose/orientation/w"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+        <range right="182.322268" left="122.332338" top="0.454587" bottom="-0.532136"/>
+        <limitY/>
+        <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/x.0/data.7">
+         <transform alias="/fhnp/traj_tracker/ref_x_u/x.0/data.7[Scale/Offset]" name="Scale/Offset">
+          <options value_offset="0" time_offset="0" value_scale="-1.0"/>
+         </transform>
+        </curve>
+        <curve color="#d95319" name="/fhnp/mavros/local_position/odom/pose/pose/orientation/x"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+        <range right="182.322268" left="122.332338" top="0.403705" bottom="-0.324034"/>
+        <limitY/>
+        <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/x.0/data.8">
+         <transform alias="/fhnp/traj_tracker/ref_x_u/x.0/data.8[Scale/Offset]" name="Scale/Offset">
+          <options value_offset="0" time_offset="0" value_scale="-1.0"/>
+         </transform>
+        </curve>
+        <curve color="#d95319" name="/fhnp/mavros/local_position/odom/pose/pose/orientation/y"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+        <range right="182.322268" left="122.332338" top="0.200848" bottom="-0.407065"/>
+        <limitY/>
+        <curve color="#0072bd" name="/fhnp/traj_tracker/ref_x_u/x.0/data.9">
+         <transform alias="/fhnp/traj_tracker/ref_x_u/x.0/data.9[Scale/Offset]" name="Scale/Offset">
+          <options value_offset="0" time_offset="0" value_scale="-1.0"/>
+         </transform>
+        </curve>
+        <curve color="#d95319" name="/fhnp/mavros/local_position/odom/pose/pose/orientation/z"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter orientation="|" sizes="0.2506;0.2506;0.248201;0.2506" count="4">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+        <range right="182.322268" left="122.332338" top="3.601162" bottom="-3.684112"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/fhnp/traj_tracker/ref_x_u/u.0/data.0"/>
+        <curve color="#17becf" name="/fhnp/mavros/local_position/odom/twist/twist/angular/x"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+        <range right="182.322268" left="122.332338" top="2.483013" bottom="-4.029797"/>
+        <limitY/>
+        <curve color="#d62728" name="/fhnp/traj_tracker/ref_x_u/u.0/data.1"/>
+        <curve color="#bcbd22" name="/fhnp/mavros/local_position/odom/twist/twist/angular/y"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+        <range right="182.322268" left="122.332338" top="0.548506" bottom="-0.404978"/>
+        <limitY/>
+        <curve color="#1ac938" name="/fhnp/traj_tracker/ref_x_u/u.0/data.2"/>
+        <curve color="#1f77b4" name="/fhnp/mavros/local_position/odom/twist/twist/angular/z"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" flip_x="false" style="Lines">
+        <range right="182.322268" left="122.332338" top="20.597958" bottom="9.213055"/>
+        <limitY/>
+        <curve color="#ff7f0e" name="/fhnp/traj_tracker/ref_x_u/u.0/data.3"/>
+       </plot>
+      </DockArea>
      </DockSplitter>
     </DockSplitter>
    </Container>

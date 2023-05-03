@@ -16,8 +16,8 @@ n_controls = 4
 
 # params for constraints
 # constraint
-w_max = 1  # 1 rad/s ~ 57 deg/s
-w_min = -1
+w_max = 6  # 1 rad/s ~ 57 deg/s
+w_min = -6
 c_max = QD.c_max
 c_min = 0
 
