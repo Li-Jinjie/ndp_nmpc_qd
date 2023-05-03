@@ -83,53 +83,50 @@ class BasePtPublisher:
         get the trajectory point at time t.
         :param ros_t: time using rospy.Time.now()
         :param t_pred: prediction time. used in nmpc to check final point
-        :param traj_pt_now: when t_pred > 0, use traj_no_pred to update self.traj_pt_now
+        :param traj_pt_now: when t_pred > 0, use traj_pt_now to update self.traj_pt_now
         :return:
         """
         traj_pt = TrajPt()
 
         t = (ros_t - self.start_ros_t).to_sec()
 
-        # Finish Detection
-        if t >= self.traj_coeff.traj_time_cum[-1]:  # change to "hover" after finished
-            traj_pt.position = self.traj_coeff.final_pt
+        if t >= self.traj_coeff.traj_time_cum[-1]:  # Finish Detection
+            traj_pt.position = self.traj_coeff.final_pt  # change to "hover" after finished
             if t - t_pred >= self.traj_coeff.traj_time_cum[-1]:
                 self.is_activated = False
-            return traj_pt
+        else:  # Generate Pt
+            time_cum = np.array(self.traj_coeff.traj_time_cum)
+            time_seg = np.array(self.traj_coeff.traj_time_seg)
+            t_index = np.argwhere(time_cum > t)[0].item() - 1  # t_index ? S_i
 
-        # Generate Pt
-        time_cum = np.array(self.traj_coeff.traj_time_cum)
-        time_seg = np.array(self.traj_coeff.traj_time_seg)
-        t_index = np.argwhere(time_cum > t)[0].item() - 1  # t_index ? S_i
+            t_segment = time_seg[t_index]
+            t_scaled = (t - time_cum[t_index]) / t_segment
 
-        t_segment = time_seg[t_index]
-        t_scaled = (t - time_cum[t_index]) / t_segment
+            # - x,y,z
+            c_x = _get_specific_coeff(t_index, self.optr_x, np.array(self.traj_coeff.coeff_x))
+            c_y = _get_specific_coeff(t_index, self.optr_y, np.array(self.traj_coeff.coeff_y))
+            c_z = _get_specific_coeff(t_index, self.optr_z, np.array(self.traj_coeff.coeff_z))
 
-        # - x,y,z
-        c_x = _get_specific_coeff(t_index, self.optr_x, np.array(self.traj_coeff.coeff_x))
-        c_y = _get_specific_coeff(t_index, self.optr_y, np.array(self.traj_coeff.coeff_y))
-        c_z = _get_specific_coeff(t_index, self.optr_z, np.array(self.traj_coeff.coeff_z))
+            traj_pt.position.x = _get_output_value(self.optr_x, 0, t_scaled, t_segment, c_x)
+            traj_pt.position.y = _get_output_value(self.optr_y, 0, t_scaled, t_segment, c_y)
+            traj_pt.position.z = _get_output_value(self.optr_z, 0, t_scaled, t_segment, c_z)
 
-        traj_pt.position.x = _get_output_value(self.optr_x, 0, t_scaled, t_segment, c_x)
-        traj_pt.position.y = _get_output_value(self.optr_y, 0, t_scaled, t_segment, c_y)
-        traj_pt.position.z = _get_output_value(self.optr_z, 0, t_scaled, t_segment, c_z)
+            traj_pt.velocity.x = _get_output_value(self.optr_x, 1, t_scaled, t_segment, c_x)
+            traj_pt.velocity.y = _get_output_value(self.optr_y, 1, t_scaled, t_segment, c_y)
+            traj_pt.velocity.z = _get_output_value(self.optr_z, 1, t_scaled, t_segment, c_z)
 
-        traj_pt.velocity.x = _get_output_value(self.optr_x, 1, t_scaled, t_segment, c_x)
-        traj_pt.velocity.y = _get_output_value(self.optr_y, 1, t_scaled, t_segment, c_y)
-        traj_pt.velocity.z = _get_output_value(self.optr_z, 1, t_scaled, t_segment, c_z)
+            traj_pt.accel.x = _get_output_value(self.optr_x, 2, t_scaled, t_segment, c_x)
+            traj_pt.accel.y = _get_output_value(self.optr_y, 2, t_scaled, t_segment, c_y)
+            traj_pt.accel.z = _get_output_value(self.optr_z, 2, t_scaled, t_segment, c_z)
 
-        traj_pt.accel.x = _get_output_value(self.optr_x, 2, t_scaled, t_segment, c_x)
-        traj_pt.accel.y = _get_output_value(self.optr_y, 2, t_scaled, t_segment, c_y)
-        traj_pt.accel.z = _get_output_value(self.optr_z, 2, t_scaled, t_segment, c_z)
+            traj_pt.jerk.x = _get_output_value(self.optr_x, 3, t_scaled, t_segment, c_x)
+            traj_pt.jerk.y = _get_output_value(self.optr_y, 3, t_scaled, t_segment, c_y)
+            traj_pt.jerk.z = _get_output_value(self.optr_z, 3, t_scaled, t_segment, c_z)
 
-        traj_pt.jerk.x = _get_output_value(self.optr_x, 3, t_scaled, t_segment, c_x)
-        traj_pt.jerk.y = _get_output_value(self.optr_y, 3, t_scaled, t_segment, c_y)
-        traj_pt.jerk.z = _get_output_value(self.optr_z, 3, t_scaled, t_segment, c_z)
-
-        # - yaw
-        c_yaw = _get_specific_coeff(t_index, self.optr_yaw, np.array(self.traj_coeff.coeff_yaw))
-        traj_pt.yaw = _get_output_value(self.optr_yaw, 0, t_scaled, t_segment, c_yaw)
-        traj_pt.yaw_dot = _get_output_value(self.optr_yaw, 1, t_scaled, t_segment, c_yaw)
+            # - yaw
+            c_yaw = _get_specific_coeff(t_index, self.optr_yaw, np.array(self.traj_coeff.coeff_yaw))
+            traj_pt.yaw = _get_output_value(self.optr_yaw, 0, t_scaled, t_segment, c_yaw)
+            traj_pt.yaw_dot = _get_output_value(self.optr_yaw, 1, t_scaled, t_segment, c_yaw)
 
         # Update States Now
         self.t_now = t - t_pred
