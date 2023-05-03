@@ -156,6 +156,9 @@ class NMPCRefPublisher(FullStatePtPublisher):
         traj_pt.velocity.x = x[3]
         traj_pt.velocity.y = x[4]
         traj_pt.velocity.z = x[5]
+        qw, qx, qy, qz = x[6], x[7], x[8], x[9]
+        euler = tf_conversions.transformations.euler_from_quaternion([qx, qy, qz, qw])
+        traj_pt.yaw = euler[2]
         return traj_pt
 
     @staticmethod
