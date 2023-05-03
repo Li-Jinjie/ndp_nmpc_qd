@@ -256,3 +256,5 @@ CATKIN_IGNORE
 /scripts/ndp_nmpc/acados_models/
 /scripts/ndp_nmpc/c_generated_code/
 /scripts/ndp_nmpc/qd_body_rate_model_acados_ocp.json
+*.csv
+*.svg
