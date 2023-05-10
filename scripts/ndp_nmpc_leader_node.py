@@ -31,14 +31,13 @@ class NDPLeaderNode(ControllerNode):
             NMPC_CTL=NDPNMPCBodyRateController,
             has_traj_server=True,
             has_pred_viz=True,
-            pred_viz_type="ref",
             is_build_acados=False,
             has_pred_pub=True,
         )
 
         # nn downwash observer
         self.downwash_observer = DownwashNN()
-        self.sub_pred = rospy.Subscriber(f"/xiao_feng/traj_tracker/pred", PredXU, self.sub_xf_pred_callback)
+        self.sub_pred = rospy.Subscriber(f"/xiao_feng/traj_tracker/ref_x_u", PredXU, self.sub_xf_pred_callback)
 
         # formation target
         self.xf_formation_ref = Point(x=0.0, y=1.0, z=1.0)

@@ -23,11 +23,9 @@ from nmpc_node import ControllerNode
 from hv_throttle_est import AlphaFilter
 
 
-class FollowerNode(ControllerNode):
+class NDPFollowerNode(ControllerNode):
     def __init__(self, is_print_error=False) -> None:
-        super().__init__(
-            has_traj_server=False, has_pred_viz=True, pred_viz_type="pred", is_build_acados=False, has_pred_pub=True
-        )
+        super().__init__(has_traj_server=False, has_pred_viz=True, is_build_acados=False, has_pred_pub=True)
 
         rospy.Subscriber(f"/fhnp/traj_tracker/pred", PredXU, self.sub_pred_callback)
 
@@ -99,7 +97,7 @@ class FollowerNode(ControllerNode):
 
 if __name__ == "__main__":
     try:
-        node = FollowerNode(is_print_error=False)
+        node = NDPFollowerNode(is_print_error=False)
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
