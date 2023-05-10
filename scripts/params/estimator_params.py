@@ -9,7 +9,8 @@ Description:
 import numpy as np
 from .fhnp_params import gravity, mass
 
-k_throttle_init = mass * gravity / 0.35
+# k_throttle_init = mass * gravity / 0.35  --> in real-world experiment
+k_throttle_init = 50.0  # more suitable for simulation
 
 ts_est = 0.02  # 50Hz
 
