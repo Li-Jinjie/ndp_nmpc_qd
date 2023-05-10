@@ -14,8 +14,8 @@ OOP QD ONBD is a repository with an NMPC controller, a hover throttle estimator,
 
 Before each running:  `cd /path_to_workspace` and then `source devel/setup.bash`
 
-- If you want to make one quadrotor fly, just run `roslaunch one_qd_nmpc.launch`
-- If you want to make three quadrotor fly in a formation, just run `roslaunch three_qd_nmpc_formation.launch`
+- If you want to make one quadrotor fly, just run `roslaunch oop_qd_onbd one_qd_nmpc.launch`
+- If you want to make three quadrotor fly in a formation, just run `roslaunch oop_qd_onbd three_qd_nmpc_formation.launch`
 
 Note that this repository is just a trajectory tracking controller, and the quadrotors remain hovering by default. If you want to make the quadrotor track a trajectory, please use `https://github.com/Li-Jinjie/cmd_pc` to send a trajectory cmd.
 
