@@ -12,5 +12,7 @@
         <node pkg="oop_qd_onbd" type="nmpc_follower_node.py" name="nmpc_node" output="screen" respawn="true"/>
 <!--        mavros_node-->
     </group>
-
+    <include file="$(find dop_qd_sim)/launch/mul_qd_w_rviz.launch">
+        <arg name="config_file" value="three_qd_config.yaml" />
+    </include>
 </launch>
