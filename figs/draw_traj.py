@@ -12,7 +12,7 @@ import matplotlib as mpl
 from matplotlib.ticker import FuncFormatter
 
 # Load the data from the .csv file into a pandas DataFrame
-traj_name = "fast_8"
+traj_name = "dw_8"  # "fast_8" or "dw_8"
 data = pd.read_csv(traj_name + ".csv")
 data.index = data["__time"] - data["__time"][0]
 
