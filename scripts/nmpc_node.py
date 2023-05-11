@@ -233,6 +233,7 @@ class ControllerNode:
         for i in range(self.nmpc_ctl.solver.N):
             if self.pred_viz_type == "pred":
                 x = self.nmpc_ctl.solver.get(i, "x")
+                x[6:10] = x[6:10] / np.linalg.norm(x[6:10], ord=2)  # normalize quaternion
             else:
                 x = self.nmpc_x_ref[i]
 
