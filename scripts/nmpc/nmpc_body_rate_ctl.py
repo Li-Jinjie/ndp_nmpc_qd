@@ -92,9 +92,14 @@ class NMPCBodyRateController(object):
             self.solver.set(i, "p", quaternion_r)  # for nonlinear quaternion error
         self.solver.set(self.solver.N, "yref", xr[self.solver.N, :])  # final state of x, no u
 
-        # self.solver.set(i, "p", fx, fy, fz)
+        # disturbance force
+        # # self.solver.set(i, "p", fx, fy, fz)
 
-        u0 = self.solver.solve_for_x0(x0)  # feedback, take the first action
+        # handle quaternion sign ambiguity
+        x0[6:10] = np.sign(x0[6]) * x0[6:10]
+
+        # feedback, take the first action
+        u0 = self.solver.solve_for_x0(x0)
 
         if self.solver.status != 0:
             raise Exception("acados acados_ocp_solver returned status {}. Exiting.".format(self.solver.status))

@@ -112,10 +112,10 @@ class NMPCRefPublisher(FullStatePtPublisher):
                 odom.twist.twist.linear.x,
                 odom.twist.twist.linear.y,
                 odom.twist.twist.linear.z,
-                -odom.pose.pose.orientation.w,
-                -odom.pose.pose.orientation.x,
-                -odom.pose.pose.orientation.y,
-                -odom.pose.pose.orientation.z,
+                odom.pose.pose.orientation.w,
+                odom.pose.pose.orientation.x,
+                odom.pose.pose.orientation.y,
+                odom.pose.pose.orientation.z,
             ]
         )  # Quaternion: from px4 convention to ros convention
 
