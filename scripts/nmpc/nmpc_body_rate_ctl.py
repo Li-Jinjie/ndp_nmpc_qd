@@ -23,7 +23,6 @@ class NMPCBodyRateController(object):
 
         nx = opt_model.x.size()[0]
         nu = opt_model.u.size()[0]
-        ny = nx + nu
         n_params = opt_model.p.size()[0]
 
         # get file path for acados
@@ -42,24 +41,34 @@ class NMPCBodyRateController(object):
 
         # initialize parameters
         ocp.dims.np = n_params
-        ocp.parameter_values = np.zeros(n_params)  # "p" is set to zeros by default
+        q_init = np.zeros(n_params)
+        q_init[0] = 1.0  # qw
+        ocp.parameter_values = q_init  # "p" is set to [1,0,0,0] by default
 
         # cost function
         # see https://docs.acados.org/python_interface/#acados_template.acados_ocp.AcadosOcpCost for details
-        ocp.cost.cost_type = "EXTERNAL"  # TODO: try NONLINEAR_LS
-        ocp.cost.cost_type_e = "EXTERNAL"
+        Q = np.diag([CP.Qp_xy, CP.Qp_xy, CP.Qp_z, CP.Qv_xy, CP.Qv_xy, CP.Qv_z, 0, CP.Qq_xy, CP.Qq_xy, CP.Qq_z])
+        R = np.diag([CP.Rw, CP.Rw, CP.Rw, CP.Rc])
+        ocp.cost.cost_type = "NONLINEAR_LS"
+        ocp.cost.cost_type_e = "NONLINEAR_LS"
+        ocp.cost.W = np.block([[Q, np.zeros((nx, nu))], [np.zeros((nu, nx)), R]])
+        ocp.cost.W_e = Q  # weight matrix at terminal shooting node (N).
 
         # set constraints
         ocp.constraints.lbu = np.array([CP.w_min, CP.w_min, CP.w_min, CP.c_min])
         ocp.constraints.ubu = np.array([CP.w_max, CP.w_max, CP.w_max, CP.c_max])
-        ocp.constraints.idxbu = np.array([0, 1, 2, 3])  # omega_x, omega_y, omega_z, collective_acceleration, fx, fy, fz
+        ocp.constraints.idxbu = np.array([0, 1, 2, 3])  # omega_x, omega_y, omega_z, collective_acceleration
         ocp.constraints.lbx = np.array([CP.v_min, CP.v_min, CP.v_min])
         ocp.constraints.ubx = np.array([CP.v_max, CP.v_max, CP.v_max])
         ocp.constraints.idxbx = np.array([3, 4, 5])  # vx, vy, vz
 
         # initial state
         x_ref = np.zeros(nx)
+        x_ref[6] = 1.0  # qw
+        u_ref = np.zeros(nu)
         ocp.constraints.x0 = x_ref
+        ocp.cost.yref = np.concatenate((x_ref, u_ref))
+        ocp.cost.yref_e = x_ref
 
         # solver options
         ocp.solver_options.qp_solver = "PARTIAL_CONDENSING_HPIPM"
@@ -77,13 +86,11 @@ class NMPCBodyRateController(object):
     def update(self, x0, xr, ur):
         # get x and u, set reference
         for i in range(self.solver.N):
-            xr_ur = np.concatenate((xr[i, :], ur[i, :]))
-            self.solver.set(i, "p", xr_ur)
-
-        # set terminal reference of x. u will be ignored.
-        u_zero = np.zeros_like(ur[0, :])
-        xr_ur = np.concatenate((xr[self.solver.N, :], u_zero))
-        self.solver.set(self.solver.N, "p", xr_ur)
+            yr = np.concatenate((xr[i, :], ur[i, :]))
+            self.solver.set(i, "yref", yr)
+            quaternion_r = xr[i, 6:10]
+            self.solver.set(i, "p", quaternion_r)  # for nonlinear quaternion error
+        self.solver.set(self.solver.N, "yref", xr[self.solver.N, :])  # final state of x, no u
 
         # self.solver.set(i, "p", fx, fy, fz)
 
@@ -111,20 +118,13 @@ class BodyRateModel(object):
         qy = ca.SX.sym("qy")
         qz = ca.SX.sym("qz")
         states = ca.vertcat(x, y, z, vx, vy, vz, qw, qx, qy, qz)
-        # nx = states.size()[0]
 
-        # reference for states
-        xr = ca.SX.sym("xr")
-        yr = ca.SX.sym("yr")
-        zr = ca.SX.sym("zr")
-        vxr = ca.SX.sym("vxr")
-        vyr = ca.SX.sym("vyr")
-        vzr = ca.SX.sym("vzr")
+        # reference for quaternions
         qwr = ca.SX.sym("qwr")
         qxr = ca.SX.sym("qxr")
         qyr = ca.SX.sym("qyr")
         qzr = ca.SX.sym("qzr")
-        states_r = ca.vertcat(xr, yr, zr, vxr, vyr, vzr, qwr, qxr, qyr, qzr)
+        quaternion_r = ca.vertcat(qwr, qxr, qyr, qzr)
 
         # control inputs
         wx = ca.SX.sym("wx")
@@ -132,14 +132,6 @@ class BodyRateModel(object):
         wz = ca.SX.sym("wz")
         c = ca.SX.sym("c")
         controls = ca.vertcat(wx, wy, wz, c)
-        # nu = controls.size()[0]
-
-        # reference for inputs
-        wxr = ca.SX.sym("wxr")
-        wyr = ca.SX.sym("wyr")
-        wzr = ca.SX.sym("wzr")
-        cr = ca.SX.sym("cr")
-        controls_r = ca.vertcat(wxr, wyr, wzr, cr)
 
         # dynamic model
         ds = ca.vertcat(
@@ -158,34 +150,20 @@ class BodyRateModel(object):
         # function
         f = ca.Function("f", [states, controls], [ds], ["state", "control_input"], ["ds"])
 
-        # cost
-        Q = np.diag([CP.Qp_xy, CP.Qp_xy, CP.Qp_z, CP.Qv_xy, CP.Qv_xy, CP.Qv_z, CP.Qq, CP.Qq, CP.Qq_z])  # dim = 9
-        R = np.diag([CP.Rw, CP.Rw, CP.Rw, CP.Rc])  # dim = 3
-
-        error_states = ca.vertcat(
-            x - xr,
-            y - yr,
-            z - zr,
-            vx - vxr,
-            vy - vyr,
-            vz - vzr,
-            qwr * qx - qw * qxr + qyr * qz - qy * qzr,
-            qwr * qy - qw * qyr - qxr * qz + qx * qzr,
-            qxr * qy - qx * qyr + qwr * qz - qw * qzr,
+        # NONLINEAR_LS: error = y - y_ref
+        state_y = ca.vertcat(
+            x,
+            y,
+            z,
+            vx,
+            vy,
+            vz,
+            qwr,
+            qwr * qx - qw * qxr + qyr * qz - qy * qzr + qxr,
+            qwr * qy - qw * qyr - qxr * qz + qx * qzr + qyr,
+            qxr * qy - qx * qyr + qwr * qz - qw * qzr + qzr,
         )
-        error_controls = ca.vertcat(
-            wx - wxr,
-            wy - wyr,
-            wz - wzr,
-            c - cr,
-        )
-
-        # error_x_u = ca.vertcat(error_states, error_controls)  # TODO: compare these code with bottom
-        # W = np.block([[Q, np.zeros((nx, nu))], [np.zeros((nu, nx)), R]])
-        # cost_f = error_x_u.T @ W @ error_x_u
-
-        cost_f = error_states.T @ Q @ error_states + error_controls.T @ R @ error_controls
-        cost_fe = error_states.T @ Q @ error_states
+        control_y = controls
 
         # acados model
         x_dot = ca.SX.sym("x_dot", 10)
@@ -198,9 +176,9 @@ class BodyRateModel(object):
         model.x = states
         model.xdot = x_dot
         model.u = controls
-        model.p = ca.vertcat(states_r, controls_r)
-        model.cost_expr_ext_cost = cost_f
-        model.cost_expr_ext_cost_e = cost_fe
+        model.p = quaternion_r
+        model.cost_y_expr = ca.vertcat(state_y, control_y)  # NONLINEAR_LS
+        model.cost_y_expr_e = state_y
 
         # constraint
         constraint = ca.types.SimpleNamespace()
