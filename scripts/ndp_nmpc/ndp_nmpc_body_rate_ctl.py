@@ -45,29 +45,25 @@ class NDPNMPCBodyRateController(object):
         ocp.parameter_values = np.zeros(n_params)
 
         # cost function
-        Q = np.diag([CP.Qp_xy, CP.Qp_xy, CP.Qp_z, CP.Qv_xy, CP.Qv_xy, CP.Qv_z, CP.Qq, CP.Qq, CP.Qq, CP.Qq_z])
+        Q = np.diag([CP.Qp_xy, CP.Qp_xy, CP.Qp_z, CP.Qv_xy, CP.Qv_xy, CP.Qv_z, 0, CP.Qq_xy, CP.Qq_xy, CP.Qq_z])
         R = np.diag([CP.Rw, CP.Rw, CP.Rw, CP.Rc])
 
-        ocp.cost.cost_type = "LINEAR_LS"  # TODO: fix quaternion error
-        ocp.cost.cost_type_e = "LINEAR_LS"
+        ocp.cost.cost_type = "NONLINEAR_LS"
+        ocp.cost.cost_type_e = "NONLINEAR_LS"
         ocp.cost.W = np.block([[Q, np.zeros((nx, nu))], [np.zeros((nu, nx)), R]])
         ocp.cost.W_e = Q  # weight matrix at terminal shooting node (N).
-        ocp.cost.Vx = np.zeros((ny, nx))
-        ocp.cost.Vx[:nx, :nx] = np.eye(nx)
-        ocp.cost.Vu = np.zeros((ny, nu))
-        ocp.cost.Vu[-nu:, -nu:] = np.eye(nu)
-        ocp.cost.Vx_e = np.eye(nx)
 
         # set constraints
         ocp.constraints.lbu = np.array([CP.w_min, CP.w_min, CP.w_min, CP.c_min])
         ocp.constraints.ubu = np.array([CP.w_max, CP.w_max, CP.w_max, CP.c_max])
-        ocp.constraints.idxbu = np.array([0, 1, 2, 3])  # omega_x, omega_y, omega_z, collective_acceleration, fx, fy, fz
+        ocp.constraints.idxbu = np.array([0, 1, 2, 3])  # omega_x, omega_y, omega_z, collective_acceleration
         ocp.constraints.lbx = np.array([CP.v_min, CP.v_min, CP.v_min])
         ocp.constraints.ubx = np.array([CP.v_max, CP.v_max, CP.v_max])
         ocp.constraints.idxbx = np.array([3, 4, 5])  # vx, vy, vz
 
         # initial state
         x_ref = np.zeros(nx)
+        x_ref[6] = 1.0  # qw
         u_ref = np.zeros(nu)
         ocp.constraints.x0 = x_ref
         ocp.cost.yref = np.concatenate((x_ref, u_ref))
@@ -86,18 +82,17 @@ class NDPNMPCBodyRateController(object):
         json_file_path = os.path.join("./" + opt_model.name + "_acados_ocp.json")
         self.solver = AcadosOcpSolver(ocp, json_file=json_file_path, build=is_build_acados)
 
-    def update(self, x0, xr, ur, p):
+    def update(self, x0, xr, ur, f):
         # get x and u, set reference
         for i in range(self.solver.N):
             yr = np.concatenate((xr[i, :], ur[i, :]))
             self.solver.set(i, "yref", yr)
-
-            self.solver.set(i, "p", p[i, :])
-
+            quaternion_r = xr[i, 6:10]  # for nonlinear quaternion error
+            p = np.concatenate((quaternion_r, f[i, :]))  # disturbance force
+            self.solver.set(i, "p", p)
         self.solver.set(self.solver.N, "yref", xr[self.solver.N, :])  # final state of x, no u
 
-        # self.solver.set(i, "p", fx, fy, fz)
-
+        # feedback, take the first action
         u0 = self.solver.solve_for_x0(x0)  # feedback, take the first action
 
         if self.solver.status != 0:
@@ -122,6 +117,13 @@ class BodyRateModel(object):
         qy = ca.SX.sym("qy")
         qz = ca.SX.sym("qz")
         states = ca.vertcat(x, y, z, vx, vy, vz, qw, qx, qy, qz)
+
+        # reference for quaternions
+        qwr = ca.SX.sym("qwr")
+        qxr = ca.SX.sym("qxr")
+        qyr = ca.SX.sym("qyr")
+        qzr = ca.SX.sym("qzr")
+        quaternion_r = ca.vertcat(qwr, qxr, qyr, qzr)
 
         # control inputs
         wx = ca.SX.sym("wx")
@@ -152,6 +154,28 @@ class BodyRateModel(object):
         # function
         f = ca.Function("f", [states, controls], [ds], ["state", "control_input"], ["ds"])
 
+        # NONLINEAR_LS: error = y - y_ref
+        qe_w = qw * qwr + qx * qxr + qy * qyr + qz * qzr
+        sgn_qew = ca.if_else(qe_w >= 0, 1, -1)  # handle quaternion sign ambiguity
+
+        qe_x = qwr * qx - qw * qxr + qyr * qz - qy * qzr
+        qe_y = qwr * qy - qw * qyr - qxr * qz + qx * qzr
+        qe_z = qxr * qy - qx * qyr + qwr * qz - qw * qzr
+
+        state_y = ca.vertcat(
+            x,
+            y,
+            z,
+            vx,
+            vy,
+            vz,
+            qwr,
+            sgn_qew * qe_x + qxr,
+            sgn_qew * qe_y + qyr,
+            sgn_qew * qe_z + qzr,
+        )
+        control_y = controls
+
         # acados model
         x_dot = ca.SX.sym("x_dot", 10)
         f_impl = x_dot - f(states, controls)
@@ -163,7 +187,9 @@ class BodyRateModel(object):
         model.x = states
         model.xdot = x_dot
         model.u = controls
-        model.p = disturb_force
+        model.p = ca.vertcat(quaternion_r, disturb_force)
+        model.cost_y_expr = ca.vertcat(state_y, control_y)  # NONLINEAR_LS
+        model.cost_y_expr_e = state_y
 
         # constraint
         constraint = ca.types.SimpleNamespace()

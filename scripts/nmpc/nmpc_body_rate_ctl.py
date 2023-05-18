@@ -92,12 +92,6 @@ class NMPCBodyRateController(object):
             self.solver.set(i, "p", quaternion_r)  # for nonlinear quaternion error
         self.solver.set(self.solver.N, "yref", xr[self.solver.N, :])  # final state of x, no u
 
-        # disturbance force
-        # # self.solver.set(i, "p", fx, fy, fz)
-
-        # handle quaternion sign ambiguity
-        x0[6:10] = np.sign(x0[6]) * x0[6:10]
-
         # feedback, take the first action
         u0 = self.solver.solve_for_x0(x0)
 
@@ -156,6 +150,13 @@ class BodyRateModel(object):
         f = ca.Function("f", [states, controls], [ds], ["state", "control_input"], ["ds"])
 
         # NONLINEAR_LS: error = y - y_ref
+        qe_w = qw * qwr + qx * qxr + qy * qyr + qz * qzr
+        sgn_qew = ca.if_else(qe_w >= 0, 1, -1)  # handle quaternion sign ambiguity
+
+        qe_x = qwr * qx - qw * qxr + qyr * qz - qy * qzr
+        qe_y = qwr * qy - qw * qyr - qxr * qz + qx * qzr
+        qe_z = qxr * qy - qx * qyr + qwr * qz - qw * qzr
+
         state_y = ca.vertcat(
             x,
             y,
@@ -164,9 +165,9 @@ class BodyRateModel(object):
             vy,
             vz,
             qwr,
-            qwr * qx - qw * qxr + qyr * qz - qy * qzr + qxr,
-            qwr * qy - qw * qyr - qxr * qz + qx * qzr + qyr,
-            qxr * qy - qx * qyr + qwr * qz - qw * qzr + qzr,
+            sgn_qew * qe_x + qxr,
+            sgn_qew * qe_y + qyr,
+            sgn_qew * qe_z + qzr,
         )
         control_y = controls
 
