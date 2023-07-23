@@ -8,7 +8,10 @@ OOP QD ONBD is a repository with an NMPC controller, a hover throttle estimator,
 
 1. Follow the installation in https://github.com/Li-Jinjie/dop_qd_sim
 2. `git clone https://github.com/Li-Jinjie/oop_qd_onbd.git`
-5. `catkin build` to build the whole workspace. Done!
+3. `catkin build` to build the whole workspace.
+4. install acados
+
+Done!
 
 ## Getting Started
 
