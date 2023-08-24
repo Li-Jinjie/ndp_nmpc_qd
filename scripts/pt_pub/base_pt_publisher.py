@@ -14,7 +14,7 @@ import tf_conversions
 
 from geometry_msgs.msg import Point
 from nav_msgs.msg import Odometry
-from oop_qd_onbd.msg import TrajCoefficients, TrajPt  # TODO: change ROS msg to python msg
+from oop_qd_onbd.msg import TrajCoefficients, TrajPt
 from .polym_optimizer import PolymOptimizer, MinMethod
 
 
