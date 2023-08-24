@@ -40,7 +40,7 @@ class ControllerNode:
         NMPC_CTL=NMPCBodyRateController,
         has_traj_server: bool = True,
         has_pred_viz: bool = True,
-        pred_viz_type: str = "pred",
+        pred_viz_type: str = "pred",  # "pred" or "ref"
         is_build_acados: bool = True,
         has_pred_pub: bool = True,
     ) -> None:
@@ -132,8 +132,8 @@ class ControllerNode:
         self.pub_ref_x_u.publish(mul_x_u)
 
     def pt_pub_callback(self, goal: TrackTrajGoal):
-        """handle 3 task:
-        1. receive a trajectory
+        """handle 3 tasks:
+        1. receive a trajectory and reset the controller
         2. pub the trajectory reference points to the controller. give back the tracking error
         3. stop and restart the hover throttle estimation
 
@@ -144,10 +144,11 @@ class ControllerNode:
 
         self.tmr_hv_throttle_est.shutdown()  # stop hover throttle estimation
 
-        self.ref_pub.reset(goal.traj_coeff, rospy.Time.now())  # 1. reset the pt_pub 2. construct first nmpc ref
-        # calculate first nmpc output. this should be done before tracking since the first SQP solving is slow.
-        nmpc_x0 = self.ref_pub.odom_2_nmpc_x(self.px4_odom)
-        u0 = self._nmpc_update(nmpc_x0)
+        self.ref_pub.reset(goal.traj_coeff, rospy.Time.now())  # 1. reset the pt_pub 2. construct nmpc ref
+
+        # Reset NMPC controller
+        self.nmpc_x_ref, self.nmpc_u_ref = self.ref_pub.get_nmpc_ref_from_long_list()  # get first nmpc output.
+        self.nmpc_ctl.reset(self.nmpc_x_ref, self.nmpc_u_ref)  # prevents warm-starting from the previous solution
 
         pos_rmse = 0
         yaw_rmse = 0
@@ -193,7 +194,7 @@ class ControllerNode:
         # restart hover throttle estimation
         self.tmr_hv_throttle_est = rospy.Timer(rospy.Duration(EP.ts_est), self.hover_throttle_callback)
 
-        time.sleep(3)  # TODO: add safe check. only start next tracking when the qd reach the starting point
+        time.sleep(3)  # TODO: Add safety check. Only start next tracking when the qd reach the starting point
 
         self.pt_pub_server.set_succeeded(TrackTrajResult(pos_rmse, yaw_rmse))
 

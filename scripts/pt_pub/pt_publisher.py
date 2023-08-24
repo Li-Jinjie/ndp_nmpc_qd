@@ -51,7 +51,7 @@ class NMPCRefPublisher(FullStatePtPublisher):
         self.x_long_list = [x_1] * CP.long_list_size
         self.u_long_list = [u_1] * CP.long_list_size
 
-        x_r, u_r = self._get_nmpc_ref_from_long_list()
+        x_r, u_r = self.get_nmpc_ref_from_long_list()
         return x_r, u_r
 
     def reset(self, traj_coeff: TrajCoefficients, ros_t: rospy.Time) -> None:
@@ -92,11 +92,11 @@ class NMPCRefPublisher(FullStatePtPublisher):
         self.x_long_list.append(x)
         self.u_long_list.append(u)
 
-        xr, ur = self._get_nmpc_ref_from_long_list()
+        xr, ur = self.get_nmpc_ref_from_long_list()
 
         return xr, ur
 
-    def _get_nmpc_ref_from_long_list(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_nmpc_ref_from_long_list(self) -> Tuple[np.ndarray, np.ndarray]:
         xr_list = self.x_long_list[CP.xr_list_index]
         ur_list = self.u_long_list[CP.xr_list_index]
         ur_list.pop(-1)

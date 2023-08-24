@@ -82,6 +82,13 @@ class NDPNMPCBodyRateController(object):
         json_file_path = os.path.join("./" + opt_model.name + "_acados_ocp.json")
         self.solver = AcadosOcpSolver(ocp, json_file=json_file_path, build=is_build_acados)
 
+    def reset(self, xr, ur):
+        # reset x and u of NNPC controller, which prevents warm-starting from the previous solution
+        for i in range(self.solver.N):
+            self.solver.set(i, "x", xr[i, :])
+            self.solver.set(i, "u", ur[i, :])
+        self.solver.set(self.solver.N, "x", xr[self.solver.N, :])
+
     def update(self, x0, xr, ur, f):
         # get x and u, set reference
         for i in range(self.solver.N):

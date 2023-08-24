@@ -72,6 +72,8 @@ class NMPCBodyRateController(object):
 
         # solver options
         ocp.solver_options.qp_solver = "PARTIAL_CONDENSING_HPIPM"
+        ocp.solver_options.hpipm_mode = "BALANCE"  # "BALANCE", "SPEED_ABS", "SPEED", "ROBUST". Default: "BALANCE".
+        # ocp.solver_options.qp_solver_warm_start = 1  # 0: no warm start; 1: warm start; 2: hot start. Default: 0
         ocp.solver_options.hessian_approx = "GAUSS_NEWTON"
         ocp.solver_options.integrator_type = "ERK"  # explicit Runge-Kutta integrator
         ocp.solver_options.print_level = 0
@@ -82,6 +84,13 @@ class NMPCBodyRateController(object):
         # compile acados ocp
         json_file_path = os.path.join("./" + opt_model.name + "_acados_ocp.json")
         self.solver = AcadosOcpSolver(ocp, json_file=json_file_path, build=is_build_acados)
+
+    def reset(self, xr, ur):
+        # reset x and u of NNPC controller, which prevents warm-starting from the previous solution
+        for i in range(self.solver.N):
+            self.solver.set(i, "x", xr[i, :])
+            self.solver.set(i, "u", ur[i, :])
+        self.solver.set(self.solver.N, "x", xr[self.solver.N, :])
 
     def update(self, x0, xr, ur):
         # get x and u, set reference
