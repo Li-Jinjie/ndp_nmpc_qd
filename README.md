@@ -1,12 +1,12 @@
 # OOP QD ONBD
 
-OOP QD ONBD is a repository with an NMPC controller, a hover throttle estimator, and a downwash estimator. This repository receives traj info (TrajCoefficients.msg) from planner, and sends bodyrate cmd (using mavros_msg) to dop_qd_sim or any simulators or real quadrotors using mavros as the comm interface.
+OOP QD ONBD is a repository with an NMPC controller, a hover throttle estimator, and a downwash estimator. This repository receives traj info (TrajCoefficients.msg) from planner, and sends bodyrate cmd (using mavros_msg) to dop_sim or any simulators or real quadrotors using mavros as the comm interface.
 
 [TOC]
 
 ## Installation
 
-1. Follow the installation in https://github.com/Li-Jinjie/dop_qd_sim
+1. Follow the installation in https://github.com/Li-Jinjie/dop_sim
 2. `git clone https://github.com/Li-Jinjie/oop_qd_onbd.git`
 3. `catkin build` to build the whole workspace.
 4. install acados

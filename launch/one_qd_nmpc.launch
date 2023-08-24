@@ -5,7 +5,7 @@
 <!--        mavros_node-->
     </group>
 
-    <include file="$(find dop_qd_sim)/launch/mul_qd_w_rviz.launch">
+    <include file="$(find dop_sim)/launch/dop_sim.launch">
         <arg name="config_file" value="one_qd_config.yaml" />
         <arg name="rviz_file" value="one_qd.rviz" />
     </include>
