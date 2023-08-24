@@ -31,7 +31,7 @@ from nmpc import NMPCBodyRateController
 from ndp_nmpc import NDPNMPCBodyRateController
 from hv_throttle_est import HoverThrottleEstimator
 
-from params import nmpc_params as CP, estimator_params as EP  # TODO: where is this CP should be?
+from params import nmpc_params as CP, estimator_params as EP
 
 
 class ControllerNode:
@@ -89,6 +89,7 @@ class ControllerNode:
                 self.nmpc_x_ref, self.nmpc_u_ref = self.ref_pub.gen_fix_pt_ref(self.px4_odom)
                 break
             time.sleep(0.2)
+        self.nmpc_ctl.reset(self.nmpc_x_ref, self.nmpc_u_ref)
 
         self.tmr_control = rospy.Timer(rospy.Duration(CP.ts_nmpc), self.nmpc_callback)
         if self.has_pred_viz:

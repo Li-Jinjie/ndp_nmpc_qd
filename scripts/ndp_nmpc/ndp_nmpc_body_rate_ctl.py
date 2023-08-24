@@ -63,7 +63,6 @@ class NDPNMPCBodyRateController(object):
 
         # initial state
         x_ref = np.zeros(nx)
-        x_ref[6] = 1.0  # qw
         u_ref = np.zeros(nu)
         ocp.constraints.x0 = x_ref
         ocp.cost.yref = np.concatenate((x_ref, u_ref))
@@ -162,9 +161,6 @@ class BodyRateModel(object):
         f = ca.Function("f", [states, controls], [ds], ["state", "control_input"], ["ds"])
 
         # NONLINEAR_LS: error = y - y_ref
-        qe_w = qw * qwr + qx * qxr + qy * qyr + qz * qzr
-        sgn_qew = ca.if_else(qe_w >= 0, 1, -1)  # handle quaternion sign ambiguity
-
         qe_x = qwr * qx - qw * qxr + qyr * qz - qy * qzr
         qe_y = qwr * qy - qw * qyr - qxr * qz + qx * qzr
         qe_z = qxr * qy - qx * qyr + qwr * qz - qw * qzr
@@ -177,9 +173,9 @@ class BodyRateModel(object):
             vy,
             vz,
             qwr,
-            sgn_qew * qe_x + qxr,
-            sgn_qew * qe_y + qyr,
-            sgn_qew * qe_z + qzr,
+            qe_x + qxr,
+            qe_y + qyr,
+            qe_z + qzr,
         )
         control_y = controls
 

@@ -41,9 +41,7 @@ class NMPCBodyRateController(object):
 
         # initialize parameters
         ocp.dims.np = n_params
-        q_init = np.zeros(n_params)
-        q_init[0] = 1.0  # qw
-        ocp.parameter_values = q_init  # "p" is set to [1,0,0,0] by default
+        ocp.parameter_values = np.zeros(n_params)
 
         # cost function
         # see https://docs.acados.org/python_interface/#acados_template.acados_ocp.AcadosOcpCost for details
@@ -64,7 +62,6 @@ class NMPCBodyRateController(object):
 
         # initial state
         x_ref = np.zeros(nx)
-        x_ref[6] = 1.0  # qw
         u_ref = np.zeros(nu)
         ocp.constraints.x0 = x_ref
         ocp.cost.yref = np.concatenate((x_ref, u_ref))
@@ -73,7 +70,8 @@ class NMPCBodyRateController(object):
         # solver options
         ocp.solver_options.qp_solver = "PARTIAL_CONDENSING_HPIPM"
         ocp.solver_options.hpipm_mode = "BALANCE"  # "BALANCE", "SPEED_ABS", "SPEED", "ROBUST". Default: "BALANCE".
-        # ocp.solver_options.qp_solver_warm_start = 1  # 0: no warm start; 1: warm start; 2: hot start. Default: 0
+        # # 0: no warm start; 1: warm start; 2: hot start. Default: 0   Seems only works for FULL_CONDENSING_QPOASES
+        # ocp.solver_options.qp_solver_warm_start = 1
         ocp.solver_options.hessian_approx = "GAUSS_NEWTON"
         ocp.solver_options.integrator_type = "ERK"  # explicit Runge-Kutta integrator
         ocp.solver_options.print_level = 0
@@ -158,10 +156,7 @@ class BodyRateModel(object):
         # function
         f = ca.Function("f", [states, controls], [ds], ["state", "control_input"], ["ds"])
 
-        # NONLINEAR_LS: error = y - y_ref
-        qe_w = qw * qwr + qx * qxr + qy * qyr + qz * qzr
-        sgn_qew = ca.if_else(qe_w >= 0, 1, -1)  # handle quaternion sign ambiguity
-
+        # NONLINEAR_LS = error^T @ Q @ error; error = y - y_ref
         qe_x = qwr * qx - qw * qxr + qyr * qz - qy * qzr
         qe_y = qwr * qy - qw * qyr - qxr * qz + qx * qzr
         qe_z = qxr * qy - qx * qyr + qwr * qz - qw * qzr
@@ -174,9 +169,9 @@ class BodyRateModel(object):
             vy,
             vz,
             qwr,
-            sgn_qew * qe_x + qxr,
-            sgn_qew * qe_y + qyr,
-            sgn_qew * qe_z + qzr,
+            qe_x + qxr,
+            qe_y + qyr,
+            qe_z + qzr,
         )
         control_y = controls
 
