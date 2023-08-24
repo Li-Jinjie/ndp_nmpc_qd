@@ -31,7 +31,7 @@ class NDPLeaderNode(ControllerNode):
             NMPC_CTL=NDPNMPCBodyRateController,
             has_traj_server=True,
             has_pred_viz=True,
-            is_build_acados=False,
+            is_build_acados=True,
             has_pred_pub=True,
         )
 
