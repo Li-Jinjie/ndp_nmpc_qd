@@ -18,5 +18,6 @@
 <!--    </group>-->
     <include file="$(find dop_qd_sim)/launch/mul_qd_w_rviz.launch">
         <arg name="config_file" value="two_qd_config.yaml" />
+        <arg name="rviz_file" value="two_qd.rviz" />
     </include>
 </launch>
