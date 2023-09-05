@@ -1,23 +1,18 @@
-import os
-import numpy as np
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
+# dropout_1 = 0.1
+# dropout_2 = 0.2
+# dropout_3 = 0.3
 
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        # full_connected
-        self.fc1 = nn.Linear(6, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 128)
-        self.fc4 = nn.Linear(128, 3)
-
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = self.fc4(x)
-
-        return x
+net = nn.Sequential(
+    nn.Linear(6, 128),
+    nn.ReLU(),
+    # nn.Dropout(dropout_1),
+    nn.Linear(128, 64),
+    nn.ReLU(),
+    # nn.Dropout(dropout_2),
+    nn.Linear(64, 128),
+    nn.ReLU(),
+    # nn.Dropout(dropout_3),
+    nn.Linear(128, 3),
+)
