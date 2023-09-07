@@ -118,7 +118,7 @@ if __name__ == "__main__":
     test_z_array = [-0.5, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5]
 
     # No SN
-    model_name = "128-64-128_WBias_SN=0_epoch=10000_test_loss=0.6353.pkl"
+    model_name = "128-64-128_WBias_SN=0_epoch=20000_test_loss=0.5181.pkl"
     model.load_state_dict(torch.load("./nn_model/" + model_name))
     # model.load_state_dict(torch.load("./model/model_params.pt"))
     model.eval()
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         im = ax[2][k].imshow(plot_f, vmin=-6, vmax=2, extent=[-xy_range, xy_range, xy_range, -xy_range], cmap=color)
 
     # SN=4
-    model_name = "128-64-128_WBias_SN=4_epoch=10000_test_loss=1.0017.pkl"
+    model_name = "128-64-128_WBias_SN=4_epoch=20000_test_loss=1.0221.pkl"
     model.load_state_dict(torch.load("./nn_model/" + model_name))
     # model.load_state_dict(torch.load("./model/model_params.pt"))
     model.eval()
@@ -177,7 +177,7 @@ if __name__ == "__main__":
         im = ax[1][k].imshow(plot_f, vmin=-6, vmax=2, extent=[-xy_range, xy_range, xy_range, -xy_range], cmap=color)
 
     # SN=2
-    model_name = "128-64-128_WBias_SN=2_epoch=10000_test_loss=1.6159.pkl"
+    model_name = "128-64-128_WBias_SN=2_epoch=20000_test_loss=1.5888.pkl"
     model.load_state_dict(torch.load("./nn_model/" + model_name))
     # model.load_state_dict(torch.load("./model/model_params.pt"))
     model.eval()
@@ -210,9 +210,9 @@ if __name__ == "__main__":
         else:
             ax[0][k].set_title(f"{test_z}")
 
-    ax[0][0].set_ylabel(f"γ=2")
-    ax[1][0].set_ylabel(f"γ=4")
-    ax[2][0].set_ylabel(f"γ=∞ (No γ)")
+    ax[0][0].set_ylabel(f"γ=2\nL=1.589")
+    ax[1][0].set_ylabel(f"γ=4\nL=1.022")
+    ax[2][0].set_ylabel(f"γ=∞ (No γ)\nLoss=0.518")
 
     # colorbar
     fig.subplots_adjust(wspace=0.3, hspace=-0.75, right=0.86)
