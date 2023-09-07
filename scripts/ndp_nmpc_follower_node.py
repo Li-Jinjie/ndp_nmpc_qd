@@ -17,7 +17,7 @@ import numpy as np
 import rospy
 
 from geometry_msgs.msg import Point
-from oop_qd_onbd.msg import PredXU
+from ndp_nmpc_qd.msg import PredXU
 
 from nmpc_node import ControllerNode
 from hv_throttle_est import AlphaFilter

@@ -12,7 +12,7 @@ import tf_conversions
 from typing import Tuple
 from nav_msgs.msg import Odometry
 
-from oop_qd_onbd.msg import TrajPt, TrajFullStatePt, TrajCoefficients
+from ndp_nmpc_qd.msg import TrajPt, TrajFullStatePt, TrajCoefficients
 from params import fhnp_params as AP, nmpc_params as CP
 from .base_pt_publisher import BasePtPublisher
 from .polym_optimizer import MinMethod

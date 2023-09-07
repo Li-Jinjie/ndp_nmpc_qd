@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Define the data
-data = np.load("/home/lijinjie/ljj_ws/src/oop_qd_onbd/figs/hv_est.npy")
+data = np.load("/home/lijinjie/ljj_ws/src/ndp_nmpc_qd/figs/hv_est.npy")
 
 plt.figure(figsize=(3.5, 2.5))
 plt.plot(data[:, 0], data[:, 1], "-", color="#0072BD")

@@ -24,7 +24,7 @@ from mavros_msgs.msg import AttitudeTarget, State
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Point, Quaternion, Pose, PoseArray, TransformStamped
-from oop_qd_onbd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback, PredXU
+from ndp_nmpc_qd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback, PredXU
 
 from pt_pub import NMPCRefPublisher
 from nmpc import NMPCBodyRateController

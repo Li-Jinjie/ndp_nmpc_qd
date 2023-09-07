@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>oop_qd_onbd</name>
+  <name>ndp_nmpc_qd</name>
   <version>0.0.0</version>
-  <description>The oop_qd_onbd package</description>
+  <description>The ndp_nmpc_qd package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/oop_qd_onbd</url> -->
+  <!-- <url type="website">http://wiki.ros.org/ndp_nmpc_qd</url> -->
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->

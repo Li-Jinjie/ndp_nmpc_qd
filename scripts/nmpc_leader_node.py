@@ -16,7 +16,7 @@ import numpy as np
 import rospy
 
 from geometry_msgs.msg import Point
-from oop_qd_onbd.msg import PredXU
+from ndp_nmpc_qd.msg import PredXU
 from params import downwash_params as DP
 
 from nmpc_node import ControllerNode
