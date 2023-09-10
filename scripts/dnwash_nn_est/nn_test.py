@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import matplotlib.ticker as mtick
@@ -7,6 +8,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import torch
 from nn_net import net
 
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 def show_forces(num_test_f, z_value, point_size, xy_range):
     fig, ax = plt.subplots(1, 3, sharex=True)
@@ -212,7 +215,7 @@ if __name__ == "__main__":
 
     ax[0][0].set_ylabel(f"γ=2\nL=1.589")
     ax[1][0].set_ylabel(f"γ=4\nL=1.022")
-    ax[2][0].set_ylabel(f"γ=∞ (No γ)\nLoss=0.518")
+    ax[2][0].set_ylabel(f"γ=inf (No γ)\nLoss=0.518")
 
     # colorbar
     fig.subplots_adjust(wspace=0.3, hspace=-0.75, right=0.86)
