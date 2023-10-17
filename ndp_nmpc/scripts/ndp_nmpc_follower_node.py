@@ -17,17 +17,17 @@ import numpy as np
 import rospy
 
 from geometry_msgs.msg import Point
-from ndp_nmpc_qd.msg import PredXU
+from ndp_nmpc.msg import PredXU
 
 from nmpc_node import ControllerNode
 from hv_throttle_est import AlphaFilter
 
 
-class FollowerNode(ControllerNode):
+class NDPFollowerNode(ControllerNode):
     def __init__(self, is_print_error=False) -> None:
         super().__init__(has_traj_server=False, has_pred_viz=True, is_build_acados=False, has_pred_pub=True)
 
-        rospy.Subscriber(f"/fhnp/traj_tracker/ref_x_u", PredXU, self.sub_pred_callback)
+        rospy.Subscriber(f"/fhnp/traj_tracker/pred", PredXU, self.sub_pred_callback)
 
         self.formation_ref = Point(x=1, y=1, z=0.5)
         self.lpf_ref_alpha = 0.8
@@ -42,6 +42,7 @@ class FollowerNode(ControllerNode):
             self.form_z_error_2 = 0
 
     def sub_formation_ref_callback(self, msg: Point):
+
         if self.lpf_form_ref_x is None:
             self.lpf_form_ref_x = AlphaFilter(alpha=self.lpf_ref_alpha, y0=msg.x)
 
@@ -96,7 +97,7 @@ class FollowerNode(ControllerNode):
 
 if __name__ == "__main__":
     try:
-        node = FollowerNode(is_print_error=False)
+        node = NDPFollowerNode(is_print_error=False)
         rospy.spin()
     except rospy.ROSInterruptException:
         pass

@@ -1,0 +1,80 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+
+box "PX4 & dop_sim" #LightGreen
+entity quadrotor
+end box
+
+box "(TX2 NX)  ndp_nmpc/controller_node" #LightBLUE
+participant tmr_control
+participant action_pt_pub
+end box
+
+note over tmr_control, action_pt_pub #white
+- Restart in each round
+---
+1. Discretize a traj. and generate target points
+2. Execute NMPC, tracking trajectory
+3. Send command to low-level controller
+end note
+
+/note over planner, rviz #white
+- Keep running
+---
+1. Input path points
+2. Use minimum snap to generate a traj.
+3. Publish the traj. as the format of task
+---
+Use transitions package to implement Finite State Machine (FSM);
+Organize code in class, as ROS2 does.
+end note
+
+loop forever
+tmr_control -> quadrotor: AttitudeTarget, \nBody rate cmd
+end
+
+'note right of pt_publisher #aqua
+'需要从ROS里拿一个parameter
+'确定是选SE3还是NMPC
+'end note
+
+box "PC -> cmd_pc/planner_node" #White
+participant planner
+entity rviz
+end box
+
+note left planner
+State: PLANNING
+end note
+planner -> planner: Get path points from files, \n or from rviz cmd, \n or from path planning
+planner -> rviz: Draw Path
+'path_planner -> traj_generator: self_defined.srv.FollowPath
+
+planner -> planner: Trajectory generation
+planner -> rviz: Draw the traj. in the form of Path msg
+
+note left of planner
+State: EXECUTION
+end note
+
+planner -> action_pt_pub: action.send_goal, \nSet params for trajectory, \nreset starting time.
+
+loop when tracking
+    action_pt_pub -> tmr_control: Generate control targets
+    action_pt_pub -> planner: action.publish_feedback, \nNotify the percentage and error of trajectory tracking
+    action_pt_pub -> rviz: Pub tf2 and Odom to represent the current position
+end
+
+action_pt_pub -> planner: action.set_succeeded, \nNotify the success of traj. tracking
+'planner -> planner: self_defined.srv.FollowPath, \n告知Path是否飞行成功
+
+note left of planner
+State: PLANNING
+end note
+
+' 状态： TAKEOFF, PLANNING, EXECUTION, LAND
+
+
+@enduml

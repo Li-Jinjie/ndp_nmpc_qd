@@ -24,11 +24,11 @@ from mavros_msgs.msg import AttitudeTarget, State
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Point, Quaternion, Pose, PoseArray, TransformStamped
-from ndp_nmpc_qd.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback, PredXU
+from ndp_nmpc.msg import TrackTrajAction, TrackTrajGoal, TrackTrajResult, TrackTrajFeedback, PredXU
 
 from pt_pub import NMPCRefPublisher
-from nmpc import NMPCBodyRateController
-from ndp_nmpc import NDPNMPCBodyRateController
+from nmpc_ctl import NMPCBodyRateController
+from ndp_nmpc_ctl import NDPNMPCBodyRateController
 from hv_throttle_est import HoverThrottleEstimator
 
 from params import nmpc_params as CP, estimator_params as EP

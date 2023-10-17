@@ -1,19 +1,19 @@
 <launch>
 <!--    pure nmpc controller-->
     <group ns="fhnp">
-        <node pkg="ndp_nmpc_qd" type="nmpc_leader_node.py" name="nmpc_node" output="screen"  respawn="true"/>
+        <node pkg="ndp_nmpc" type="nmpc_leader_node.py" name="nmpc_node" output="screen"  respawn="true"/>
 <!--        mavros_node-->
     </group>
     <group ns="xiao_feng">
-        <node pkg="ndp_nmpc_qd" type="nmpc_follower_node.py" name="nmpc_node" output="screen"  respawn="true"/>
+        <node pkg="ndp_nmpc" type="nmpc_follower_node.py" name="nmpc_node" output="screen"  respawn="true"/>
 <!--        mavros_node-->
     </group>
 <!--    <group ns="smile_boy">-->
-<!--        <node pkg="ndp_nmpc_qd" type="nmpc_follower_node.py" name="nmpc_node" output="screen"/>-->
+<!--        <node pkg="ndp_nmpc" type="nmpc_follower_node.py" name="nmpc_node" output="screen"/>-->
 <!--&lt;!&ndash;        mavros_node&ndash;&gt;-->
 <!--    </group>-->
 <!--    <group ns="wan_yue">-->
-<!--        <node pkg="ndp_nmpc_qd" type="nmpc_leader_node.py" name="nmpc_node" output="screen"/>-->
+<!--        <node pkg="ndp_nmpc" type="nmpc_leader_node.py" name="nmpc_node" output="screen"/>-->
 <!--&lt;!&ndash;        mavros_node&ndash;&gt;-->
 <!--    </group>-->
     <include file="$(find dop_sim)/launch/dop_sim.launch">

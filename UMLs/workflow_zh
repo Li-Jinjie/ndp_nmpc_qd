@@ -1,0 +1,80 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+
+box "PX4 & dop_sim" #LightGreen
+entity quadrotor
+end box
+
+box "(TX2 NX)  ndp_nmpc/controller_node" #LightBLUE
+participant tmr_control
+participant pt_pub_server
+end box
+
+note over tmr_control, pt_pub_server #white
+- 每次运行都要重启
+---
+1. 离散traj.，生成target point
+2. 运行NMPC，执行traj. tracking
+3. 向底层控制器发命令
+end note
+
+/note over planner, rviz #white
+- 启动就不关了
+---
+1. 读取路径点
+2. minimum snap生成traj.
+3. 以task的形式发布traj.
+---
+用FMS库transitions编写状态机;
+参考ROS2的写法，使用class的形式组织程序。
+end note
+
+loop forever
+tmr_control -> quadrotor: AttitudeTarget, \n角速度控制指令
+end
+
+'note right of pt_publisher #aqua
+'需要从ROS里拿一个parameter
+'确定是选SE3还是NMPC
+'end note
+
+box "PC -> cmd_pc/planner_node" #White
+participant planner
+entity rviz
+end box
+
+note left planner
+状态: PLANNING
+end note
+planner -> planner: 读取路径点，\n 或读取rviz指令，\n 或path planning
+planner -> rviz: 绘制Path
+'path_planner -> traj_generator: self_defined.srv.FollowPath
+
+planner -> planner: 规划轨迹
+planner -> rviz: 绘制traj, 也是Path消息类型
+
+note left of planner
+状态: EXECUTION
+end note
+
+planner -> pt_pub_server: action.send_goal, \n设置轨迹参数，重置轨迹开始时间
+
+loop when tracking
+    pt_pub_server -> tmr_control: 生成控制目标
+    pt_pub_server -> planner: action.publish_feedback, \n告知轨迹跟踪的进度与误差
+    pt_pub_server -> rviz: 发送tf2和Odom，表示当前位置
+end
+
+pt_pub_server -> planner: action.set_succeeded, \n告知Traj飞行成功
+'planner -> planner: self_defined.srv.FollowPath, \n告知Path是否飞行成功
+
+note left of planner
+状态: PLANNING
+end note
+
+' 状态： TAKEOFF, PLANNING, EXECUTION, LAND
+
+
+@enduml

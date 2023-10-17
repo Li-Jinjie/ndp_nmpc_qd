@@ -1,7 +1,7 @@
 <launch>
 <!--    pure nmpc controller-->
     <group ns="fhnp">
-        <node pkg="ndp_nmpc_qd" type="nmpc_node.py" name="nmpc_node" output="screen" respawn="true"/>
+        <node pkg="ndp_nmpc" type="nmpc_node.py" name="nmpc_node" output="screen" respawn="true"/>
 <!--        mavros_node-->
     </group>
 

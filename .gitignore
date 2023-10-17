@@ -250,13 +250,14 @@ CATKIN_IGNORE
 ######################### For Me ##################
 /archives
 .idea
-/scripts/nmpc/c_generated_code/
-/scripts/nmpc/acados_models/
-/scripts/nmpc/qd_body_rate_model_acados_ocp.json
-/scripts/ndp_nmpc/acados_models/
-/scripts/ndp_nmpc/c_generated_code/
-/scripts/ndp_nmpc/qd_body_rate_model_acados_ocp.json
+/ndp_nmpc/scripts/nmpc_ctl/c_generated_code/
+/ndp_nmpc/scripts/nmpc_ctl/acados_models/
+/ndp_nmpc/scripts/nmpc_ctl/qd_body_rate_model_acados_ocp.json
+/ndp_nmpc/scripts/ndp_nmpc_ctl/acados_models/
+/ndp_nmpc/scripts/ndp_nmpc_ctl/c_generated_code/
+/ndp_nmpc/scripts/ndp_nmpc_ctl/qd_body_rate_model_acados_ocp.json
 *.csv
 *.svg
-/scripts/dnwash_nn_est/runs/
-/scripts/dnwash_nn_est/imgs/
+/ndp_nmpc/scripts/dnwash_nn_est/runs/
+/ndp_nmpc/scripts/dnwash_nn_est/imgs/
+

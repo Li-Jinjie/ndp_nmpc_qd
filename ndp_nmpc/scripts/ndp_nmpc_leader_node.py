@@ -16,16 +16,28 @@ import numpy as np
 import rospy
 
 from geometry_msgs.msg import Point
-from ndp_nmpc_qd.msg import PredXU
-from params import downwash_params as DP
+from ndp_nmpc.msg import PredXU
+from params import downwash_params as DP, nmpc_params as CP
 
 from nmpc_node import ControllerNode
 from dnwash_nn_est import DownwashNN
 
+from ndp_nmpc_ctl import NDPNMPCBodyRateController
 
-class LeaderNode(ControllerNode):
+
+class NDPLeaderNode(ControllerNode):
     def __init__(self):
-        super().__init__(has_traj_server=True, has_pred_viz=True, is_build_acados=False, has_pred_pub=True)
+        super().__init__(
+            NMPC_CTL=NDPNMPCBodyRateController,
+            has_traj_server=True,
+            has_pred_viz=True,
+            is_build_acados=True,
+            has_pred_pub=True,
+        )
+
+        # nn downwash observer
+        self.downwash_observer = DownwashNN()
+        self.sub_pred = rospy.Subscriber(f"/xiao_feng/traj_tracker/ref_x_u", PredXU, self.sub_xf_pred_callback)
 
         # formation target
         self.xf_formation_ref = Point(x=0.0, y=1.0, z=1.0)
@@ -45,10 +57,28 @@ class LeaderNode(ControllerNode):
         self.pub_xf_formation_ref.publish(self.xf_formation_ref)
         self.pub_sb_formation_ref.publish(self.sb_formation_ref)
 
+    def sub_xf_pred_callback(self, msg: PredXU):
+        # make traj target
+        x_list = msg.x
+        nmpc_x_other = np.zeros(shape=self.nmpc_x_ref.shape, dtype=np.float64)
+
+        ego_position = self.px4_odom.pose.pose.position
+        if (msg.x[0].data[0] - ego_position.x) ** 2 + (
+            msg.x[0].data[1] - ego_position.y
+        ) ** 2 < DP.r_horiz**2:  # take effect
+            for i in range(len(x_list)):
+                x = np.array(x_list[i].data, dtype=np.float64)
+                nmpc_x_other[i] = x
+
+            # make prediction
+            self.disturb_force = self.downwash_observer.update(nmpc_x_other, self.nmpc_x_ref)
+        else:
+            self.disturb_force = np.zeros([len(x_list), 3])
+
 
 if __name__ == "__main__":
     try:
-        node = LeaderNode()
+        node = NDPLeaderNode()
         rospy.spin()
     except rospy.ROSInterruptException:
         pass

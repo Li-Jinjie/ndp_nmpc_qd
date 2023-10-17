@@ -14,7 +14,7 @@ import tf_conversions
 
 from geometry_msgs.msg import Point
 from nav_msgs.msg import Odometry
-from ndp_nmpc_qd.msg import TrajCoefficients, TrajPt
+from ndp_nmpc.msg import TrajCoefficients, TrajPt
 from .polym_optimizer import PolymOptimizer, MinMethod
 
 
@@ -82,7 +82,7 @@ class BasePtPublisher:
         """
         get the trajectory point at time t.
         :param ros_t: time using rospy.Time.now()
-        :param t_pred: prediction time. used in nmpc to check final point
+        :param t_pred: prediction time. used in nmpc_ctl to check final point
         :param traj_pt_now: when t_pred > 0, use traj_pt_now to update self.traj_pt_now
         :return:
         """
