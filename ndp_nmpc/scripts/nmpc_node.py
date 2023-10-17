@@ -176,7 +176,7 @@ class ControllerNode:
             feedback.pos_error = pos_err_now
             feedback.yaw_error = yaw_err_now
             rospy.loginfo_throttle(
-                1, f"{self.namespace}: Trajectory tracking percent complete: {100 * feedback.percent_complete:.2f}%"
+                1, f"{self.namespace}: Trajectory tracking complete: {100 * feedback.percent_complete:.2f}%"
             )
             self.pt_pub_server.publish_feedback(feedback)
 
