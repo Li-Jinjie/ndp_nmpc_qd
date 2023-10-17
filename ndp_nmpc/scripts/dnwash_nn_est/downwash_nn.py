@@ -4,15 +4,15 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from nn_net import Net
+from .nn_net import net
 
 
 class DownwashNN:
     def __init__(self):
         self.device = torch.device("cuda")
-        self.nn_model = Net()
+        self.nn_model = net
         self.nn_model.load_state_dict(
-            torch.load("../dnwash_nn_est/nn_model/bias0.686_SN=4_epoch=20000_test_loss=1.0527_model_params_bebest.pkl")
+            torch.load("../dnwash_nn_est/nn_model/128-64-128_WBias_SN=4_epoch=20000_test_loss=1.0221.pkl")
         )
         self.nn_model.to(self.device)
         self.nn_model.eval()  # set to evaluation mode
