@@ -11,8 +11,8 @@ Read our paper for more details: https://arxiv.org/abs/2304.07794.
 ```
 @INPROCEEDINGS{
   author={Li, Jinjie and Han, Liang and Yu, Haoyang and Lin, Yuheng and Li, Qingdong and Ren, Zhang},
-  booktitle={62nd IEEE Conference on Decision and Control (CDC)}, 
-  title={Nonlinear MPC for Quadrotors in Close-Proximity Flight with Neural Network Downwash Prediction}, 
+  booktitle={62nd IEEE Conference on Decision and Control (CDC)},
+  title={Nonlinear MPC for Quadrotors in Close-Proximity Flight with Neural Network Downwash Prediction},
   year={2023},
   pages={1-7}}
 ```
@@ -31,11 +31,17 @@ Done!
 Before each running:  `cd /path_to_workspace` and then `source devel/setup.bash`
 
 - If you want to make one quadrotor fly, just run `roslaunch ndp_nmpc_qd one_qd_nmpc.launch`
-- Then run `rosrun cmd_pc planner_node.py ` to send a trajectory!
+- Then run `roslaunch cmd_pc send_traj.launch path_config_file:=eight_high_dyn.yaml ` to send a trajectory!
 
 Instead,
 
 - If you want to make three quadrotor fly in a formation, just run `roslaunch ndp_nmpc three_qd_nmpc_formation.launch`
+- Then run `roslaunch cmd_pc send_traj.launch path_config_file:=eight_low.yaml` to send a trajectory!
+
+If you want to see ndp_nmpc,
+
+- `roslaunch ndp_nmpc three_qd_ndp_nmpc.launch`
+- `roslaunch cmd_pc send_traj.launch path_config_file:=eight_low.yaml `
 
 ## Workflow
 
