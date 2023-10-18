@@ -139,15 +139,17 @@ class BodyRateModel(object):
         controls = ca.vertcat(wx, wy, wz, c)
 
         # outer forces
-        disturb_f = ca.DM(3, 1)
+        disturb_fx = ca.SX.sym("disturb_fx")
+        disturb_fy = ca.SX.sym("disturb_fy")
+        disturb_fz = ca.SX.sym("disturb_fz")
 
         ds = ca.vertcat(
             vx,
             vy,
             vz,
-            2 * (qx * qz + qw * qy) * c + disturb_f[0, 0] / CP.mass,
-            2 * (qy * qz - qw * qx) * c + disturb_f[1, 0] / CP.mass,
-            (1 - 2 * qx**2 - 2 * qy**2) * c - CP.gravity + disturb_f[2, 0] / CP.mass,
+            2 * (qx * qz + qw * qy) * c + disturb_fx / CP.mass,
+            2 * (qy * qz - qw * qx) * c + disturb_fy / CP.mass,
+            (1 - 2 * qx**2 - 2 * qy**2) * c - CP.gravity + disturb_fz / CP.mass,
             (-wx * qx - wy * qy - wz * qz) * 0.5,
             (wx * qw + wz * qy - wy * qz) * 0.5,
             (wy * qw - wz * qx + wx * qz) * 0.5,
@@ -155,7 +157,7 @@ class BodyRateModel(object):
         )
 
         # function
-        f = ca.Function("f", [states, controls], [ds], ["state", "control_input"], ["ds"])
+        f = ca.Function("f", [states, controls], [ds], ["state", "control_input"], ["ds"], {"allow_free": True})
 
         # NONLINEAR_LS: error = y - y_ref
         qe_x = qwr * qx - qw * qxr + qyr * qz - qy * qzr
@@ -187,7 +189,7 @@ class BodyRateModel(object):
         model.x = states
         model.xdot = x_dot
         model.u = controls
-        model.p = ca.vertcat(quaternion_r, disturb_f)
+        model.p = ca.vertcat(quaternion_r, disturb_fx, disturb_fy, disturb_fz)
         model.cost_y_expr = ca.vertcat(state_y, control_y)  # NONLINEAR_LS
         model.cost_y_expr_e = state_y
 
