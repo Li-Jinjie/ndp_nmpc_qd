@@ -19,10 +19,13 @@ Read our paper for more details: https://arxiv.org/abs/2304.07794.
 
 ## Installation
 
-1. Follow the installation in https://github.com/Li-Jinjie/dop_sim
-2. `git clone https://github.com/Li-Jinjie/ndp_nmpc_qd.git`
-3. `catkin build` to build the whole workspace.
-4. install acados
+1. install ROS noetic following http://wiki.ros.org/noetic/Installation/Ubuntu
+2. install PyTorch with GPU option following https://pytorch.org/get-started/locally/
+3. install acados following https://docs.acados.org/installation/index.html
+4. Create a workspace for ROS noetic, then go to the /src
+4. `sudo apt install ros-noetic-mavros-msgs`
+5. `git clone --recurse-submodules https://github.com/Li-Jinjie/ndp_nmpc_qd.git`
+6. `catkin build` to build the whole workspace. Done!
 
 Done!
 
