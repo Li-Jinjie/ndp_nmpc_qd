@@ -36,25 +36,25 @@ Before each running:  `cd /path_to_workspace` and then `source devel/setup.bash`
 - If you want to make one quadrotor fly, just run `roslaunch ndp_nmpc_qd one_qd_nmpc.launch`
 - Then run `roslaunch cmd_pc send_traj.launch path_config_file:=eight_high_dyn.yaml ` to send a trajectory!
 
-![](./figs/one_qd_nmpc.gif)
+![](z_figs/one_qd_nmpc.gif)
 
 Instead,
 
 - If you want to make three quadrotor fly in a formation, just run `roslaunch ndp_nmpc three_qd_nmpc_formation.launch`
 - Then run `roslaunch cmd_pc send_traj.launch path_config_file:=eight_low.yaml` to send a trajectory!
 
-![](./figs/three_qd_nmpc.gif)
+![](z_figs/three_qd_nmpc.gif)
 
 If you want to see ndp_nmpc,
 
 - `roslaunch ndp_nmpc three_qd_ndp_nmpc.launch`
 - `roslaunch cmd_pc send_traj.launch path_config_file:=eight_low.yaml `
 
-![](./figs/three_qd_ndp_nmpc.gif)
+![](z_figs/three_qd_ndp_nmpc.gif)
 
 ## Workflow
 
-![](./figs/workflow.svg)
+![](z_figs/workflow.svg)
 
 ## License
 
