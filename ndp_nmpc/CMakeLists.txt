@@ -8,6 +8,7 @@ project(ndp_nmpc)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  rospy
   geometry_msgs
   mavros_msgs
   nav_msgs
@@ -112,7 +113,7 @@ add_action_files(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ndp_nmpc
-  CATKIN_DEPENDS geometry_msgs mavros_msgs nav_msgs std_msgs message_runtime
+  CATKIN_DEPENDS geometry_msgs mavros_msgs nav_msgs std_msgs message_runtime actionlib
 #  DEPENDS system_lib
 )
 
