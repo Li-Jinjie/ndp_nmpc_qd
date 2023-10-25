@@ -93,10 +93,15 @@ class NDPNMPCBodyRateController(object):
         for i in range(self.solver.N):
             yr = np.concatenate((xr[i, :], ur[i, :]))
             self.solver.set(i, "yref", yr)
+
             quaternion_r = xr[i, 6:10]  # for nonlinear quaternion error
             p = np.concatenate((quaternion_r, f[i, :]))  # disturbance force
             self.solver.set(i, "p", p)
         self.solver.set(self.solver.N, "yref", xr[self.solver.N, :])  # final state of x, no u
+
+        quaternion_r = xr[self.solver.N, 6:10]  # for nonlinear quaternion error
+        p = np.concatenate((quaternion_r, f[self.solver.N, :]))  # disturbance force
+        self.solver.set(self.solver.N, "p", p)
 
         # feedback, take the first action
         u0 = self.solver.solve_for_x0(x0)  # feedback, take the first action
